@@ -2,7 +2,8 @@
 .venv/
 venv/
 ENV/
-docs/
+docs/*
+!docs/Dashboard_Technical_Dossier.md
 # Archivos de caché de Python
 __pycache__/
 *.py[cod]
