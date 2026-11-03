@@ -2,7 +2,27 @@
 
 **A two-page BI decision deck that turns 17.4M fragmented enrollment records into a board-ready growth case for a Peruvian private university.**
 
-`Power BI` · `DAX (107 measures)` · `Python` · `Kimball Star Schema` · `HTML/CSS inside DAX`
+`Power BI` · `DAX (46 measures)` · `Python` · `Kimball Star Schema` · `HTML/CSS inside DAX`
+
+---
+
+## Dashboard Preview
+
+**Page 1 — Current Situation**
+
+![Page 1](assets/page1.png)
+
+**Page 1 — every card flipped: the diagnosis behind each KPI**
+
+![Page 1 flipped](assets/page1-flipped.png)
+
+**Page 2 — Opportunities: where to grow next**
+
+![Page 2](assets/page2.png)
+
+**Page 2 — every card flipped: the evidence behind each headline**
+
+![Page 2 flipped](assets/page2-flipped.png)
 
 ---
 
@@ -18,7 +38,7 @@ The data that should answer those questions is published as semester-level files
 
 | | |
 |---|---|
-| Source | SUNEDU / TUNI public enrollment datasets |
+| Source | [SUNEDU / TUNI](https://tuni.pe/datos) public enrollment datasets |
 | Raw scope | 2020 – 2025, national coverage |
 | Cleaned fact table | **17,368,424** enrollment records |
 | Universities benchmarked | **174** |
@@ -84,7 +104,8 @@ The sequencing matters: **defend and digitize at home before expanding.** Enteri
 
 ## Technical Highlights
 
-- **107 DAX measures**, **40 of them hand-coded HTML cards** rendered inside the model — including flip-card interactions driven by `<input type="checkbox">` + `<label>`, no external custom visuals required.
+- **46 DAX measures**, **20 of them hand-coded HTML cards** rendered inside the model — including flip-card interactions driven by `<input type="checkbox">` + `<label>`, no external custom visuals required.
+- **Tooltips and hover states**: info tooltips on every KPI card plus `title` attributes inside the HTML cards, so the detail lives one level down and the canvas stays clean.
 - **Dynamic theming**: every card resolves Light/Dark from a slicer table, so the entire report restyles without duplicating visuals.
 - **Fully parameterized cards**: no hardcoded figures. Every number in every card is computed from the model, including correlation coefficients (`AVERAGEX`/`SUMX`/`POWER`/`SQRT`).
 - **Audited consistency**: cross-checked every displayed figure against the semantic model, which caught a stale metric presented on a different level grain (all-levels vs undergraduate) and corrected it.
@@ -120,6 +141,14 @@ assets/        dashboard screenshots
 ## Companion Project
 
 A separate technical assessment (SUNEDU) validated data extraction and HTML/DAX rendering skills under time pressure. That repository is a skills validation exercise; **this one is the strategic case study.**
+
+## How to Open
+
+1. Install **Power BI Desktop** (2.130 or later).
+2. Enable **Preview features → Power BI Project (.pbip)** in *File → Options and settings → Options*.
+3. Open `dashboard/demanda_UCSP.pbip`.
+
+The report opens in **Light** mode by default. Data is not bundled in the repository: the semantic model points to parquet files produced by the notebooks from public SUNEDU/TUNI sources.
 
 ---
 
@@ -205,7 +234,8 @@ El orden importa: **defender y digitalizar en casa antes de expandirse.** Entrar
 
 ## Aspectos técnicos destacados
 
-- **107 medidas DAX**, **40 de ellas tarjetas HTML codificadas a mano** dentro del modelo — incluyendo interacción de volteo con `<input type="checkbox">` + `<label>`, sin visuales personalizados externos.
+- **46 medidas DAX**, **20 de ellas tarjetas HTML codificadas a mano** dentro del modelo — incluyendo interacción de volteo con `<input type="checkbox">` + `<label>`, sin visuales personalizados externos.
+- **Tooltips y estados de hover**: tooltips informativos en cada tarjeta KPI y atributos `title` dentro de las tarjetas HTML, para que el detalle viva un nivel abajo y el lienzo quede limpio.
 - **Theming dinámico**: cada tarjeta resuelve Light/Dark desde una tabla de selección, de modo que todo el reporte cambia de tema sin duplicar visuales.
 - **Tarjetas totalmente parametrizadas**: ninguna cifra está escrita a mano. Todo se calcula desde el modelo, incluidos coeficientes de correlación (`AVERAGEX`/`SUMX`/`POWER`/`SQRT`).
 - **Consistencia auditada**: cada cifra mostrada se contrastó contra el modelo, lo que detectó una métrica presentada con un grano distinto al resto (todos los niveles vs pregrado) y se corrigió.
@@ -242,9 +272,10 @@ assets/        capturas del tablero
 
 Una prueba técnica separada (SUNEDU) validó habilidades de extracción de datos y renderizado HTML/DAX bajo presión de tiempo. Ese repositorio es un ejercicio de validación de habilidades; **este es el caso de negocio.**
 
----
+## Cómo abrirlo
 
-### Dashboard Preview
+1. Instalar **Power BI Desktop** (2.130 o superior).
+2. Activar **Preview features → Power BI Project (.pbip)** en *Archivo → Opciones y configuración → Opciones*.
+3. Abrir `dashboard/demanda_UCSP.pbip`.
 
-![Page 1 — Current Situation](assets/page1.png)
-![Page 2 — Opportunities](assets/page2.png)
+El reporte abre en modo **Light** por defecto. Los datos no están incluidos en el repositorio: el modelo semántico apunta a archivos parquet generados por los notebooks a partir de fuentes públicas de SUNEDU/TUNI.
