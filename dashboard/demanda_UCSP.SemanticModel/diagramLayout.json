@@ -1,0 +1,190 @@
+{
+  "version": "1.1.0",
+  "diagrams": [
+    {
+      "ordinal": 0,
+      "scrollPosition": {
+        "x": 370.10771177247057,
+        "y": 0
+      },
+      "nodes": [
+        {
+          "location": {
+            "x": 417.16261158271305,
+            "y": 0
+          },
+          "nodeIndex": "fact_matriculados_dashboard",
+          "nodeLineageTag": "70e0de65-7ef4-4261-892b-2fd96949a233",
+          "size": {
+            "height": 272,
+            "width": 234
+          },
+          "zIndex": 1
+        },
+        {
+          "location": {
+            "x": 851.96125833727478,
+            "y": 12
+          },
+          "nodeIndex": "fact_ingresantes_dashboard",
+          "nodeLineageTag": "7591cf60-270d-41e1-bccd-9a0f6660ecad",
+          "size": {
+            "height": 248,
+            "width": 234
+          },
+          "zIndex": 2
+        },
+        {
+          "location": {
+            "x": 0,
+            "y": 396.74794919621843
+          },
+          "nodeIndex": "dim_universidad",
+          "nodeLineageTag": "aab2972e-af85-4ea3-a596-6cf97191fbfe",
+          "size": {
+            "height": 248,
+            "width": 234
+          },
+          "zIndex": 3
+        },
+        {
+          "location": {
+            "x": 269.94541019033613,
+            "y": 403.15195310420165
+          },
+          "nodeIndex": "dim_ubicacion",
+          "nodeLineageTag": "2d741478-3cdc-44d8-a2b4-463fd8028eb5",
+          "size": {
+            "height": 176,
+            "width": 234
+          },
+          "zIndex": 4
+        },
+        {
+          "location": {
+            "x": 562.40140907376963,
+            "y": 412.93461214099636
+          },
+          "nodeIndex": "dim_programa",
+          "nodeLineageTag": "5b4c9cd7-a9ae-4dc5-be8f-d0c42fd08a06",
+          "size": {
+            "height": 272,
+            "width": 234
+          },
+          "zIndex": 5
+        },
+        {
+          "location": {
+            "x": 853.448074809964,
+            "y": 413.701283460024
+          },
+          "nodeIndex": "dim_periodo",
+          "nodeLineageTag": "81189688-6174-45d9-818d-3266fa89f80a",
+          "size": {
+            "height": 200,
+            "width": 234
+          },
+          "zIndex": 6
+        },
+        {
+          "location": {
+            "x": 1167.0440709019808,
+            "y": 408.0226143741296
+          },
+          "nodeIndex": "dim_local",
+          "nodeLineageTag": "658a6ac4-fd79-4d55-8f89-2e655637d269",
+          "size": {
+            "height": 248,
+            "width": 234
+          },
+          "zIndex": 7
+        },
+        {
+          "location": {
+            "x": 1451.0440709019808,
+            "y": 192.46730607049818
+          },
+          "nodeIndex": "Medidas",
+          "nodeLineageTag": "93a44533-bb43-4af5-8631-e62463f9a0dd",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 8
+        },
+        {
+          "location": {
+            "x": 244.97550085671577,
+            "y": 656.81125135873344
+          },
+          "nodeIndex": "Dim_Zona",
+          "nodeLineageTag": "13ed4982-409f-4ca9-aa8e-f052838e7b93",
+          "size": {
+            "height": 200,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 908.43079784054635,
+            "y": 862.66000117694148
+          },
+          "nodeIndex": "fact_alumnos",
+          "nodeLineageTag": "85f6d69c-1d90-4d10-845d-73e3eaa25952",
+          "size": {
+            "height": 176,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 1735.0440709019808,
+            "y": 242.46730607049818
+          },
+          "nodeIndex": "HTML_KPI_Programas_Riesgo",
+          "size": {
+            "height": 200,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 2019.0440709019808,
+            "y": 455.33000058847074
+          },
+          "nodeIndex": "Theme_Switcher",
+          "nodeLineageTag": "d7451b6c-4364-40f0-9cf4-9829be5e0b8e",
+          "size": {
+            "height": 128,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 2303.0440709019808,
+            "y": 431.33000058847074
+          },
+          "nodeIndex": "origen_ucsp",
+          "nodeLineageTag": "2863a0e5-d346-4a3b-8f06-edcb24862936",
+          "size": {
+            "height": 176,
+            "width": 234
+          },
+          "zIndex": 0
+        }
+      ],
+      "name": "Todas las tablas",
+      "zoomValue": 69.889313929107516,
+      "pinKeyFieldsToTop": false,
+      "showExtraHeaderInfo": false,
+      "hideKeyFieldsWhenCollapsed": false,
+      "tablesLocked": false
+    }
+  ],
+  "selectedDiagram": "Todas las tablas",
+  "defaultDiagram": "Todas las tablas"
+}

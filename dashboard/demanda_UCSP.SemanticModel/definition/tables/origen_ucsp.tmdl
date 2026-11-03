@@ -1,0 +1,35 @@
+table origen_ucsp
+	lineageTag: 2863a0e5-d346-4a3b-8f06-edcb24862936
+
+	column ANIO
+		dataType: int64
+		lineageTag: 7b8736b1-8780-4870-ba5c-a35f928eec44
+		summarizeBy: none
+		sourceColumn: ANIO
+
+	column NIVEL
+		dataType: string
+		lineageTag: 2ea24cd5-a2fe-4c69-945b-c55d926e060d
+		summarizeBy: none
+		sourceColumn: NIVEL
+
+	column DEPARTAMENTO_NACIMIENTO
+		dataType: string
+		lineageTag: e5475aaa-ca57-4df1-998d-cee8b6d00a47
+		summarizeBy: none
+		sourceColumn: DEPARTAMENTO_NACIMIENTO
+
+	column MATRICULAS
+		dataType: int64
+		lineageTag: 808e5389-f675-4b85-be03-bc27071ecae3
+		summarizeBy: sum
+		sourceColumn: MATRICULAS
+
+	partition origen_ucsp = m
+		mode: import
+		source =
+				let
+				    Origen = Parquet.Document(File.Contents("D:\Proyectos\A.Prueba Tecnica UCSP\data\Dashboard_parquet\origen_ucsp.parquet"), [Compression=null, LegacyColumnNameEncoding=false, MaxDepth=null])
+				in
+				    Origen
+

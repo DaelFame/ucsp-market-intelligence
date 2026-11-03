@@ -1,0 +1,85 @@
+{
+  "antes": {
+    "dim_programa_filas": 537,
+    "dim_programa_codigos": 537,
+    "dash_matriculados_filas": 450448,
+    "dash_matriculados_suma": 17361782,
+    "dash_ingresantes_filas": 166666,
+    "dash_ingresantes_suma": 3119994
+  },
+  "dim_programa_nueva": {
+    "filas": 6189,
+    "nombres_distintos": 3619,
+    "niveles": {
+      "CARRERA PROFESIONAL": 2805,
+      "MAESTRIA": 2049,
+      "SEGUNDA ESPECIALIDAD": 918,
+      "DOCTORADO": 417
+    }
+  },
+  "mapa": {
+    "pares_mapeados": 6189
+  },
+  "gold_facts": {
+    "fact_ingresantes": {
+      "filas": 3119994,
+      "sin_mapeo": 0
+    },
+    "fact_matriculados": {
+      "filas": 17368424,
+      "sin_mapeo": 0
+    }
+  },
+  "fact_alumnos": {
+    "filas": 17361782,
+    "personas_distintas": 3553322,
+    "filas_originales": 17368424,
+    "duplicados_colapsados": 6642
+  },
+  "aceptacion": {
+    "A1_total_matriculas_ucsp_2025": 18978,
+    "A2_estudiantes_unicos_ucsp_2025": 10664,
+    "A3_unicos_s1": 9755,
+    "A4_unicos_s2": 9209,
+    "A8_dim_programa_filas": 6189,
+    "A9_nombres_distintos": 3619,
+    "A12_suma_total_matriculados": 17361782,
+    "A12_suma_total_ingresantes": 3119994,
+    "unicos_mercado_2025": 1883001,
+    "A10_programas_ucsp": [
+      "ADMINISTRACION DE NEGOCIOS",
+      "ARQUITECTURA Y URBANISMO",
+      "CIENCIA DE LA COMPUTACION",
+      "CONTABILIDAD",
+      "DERECHO",
+      "EDUCACION",
+      "INGENIERIA AMBIENTAL",
+      "INGENIERIA CIVIL",
+      "INGENIERIA ELECTRONICA Y DE TELECOMUNICACIONES",
+      "INGENIERIA INDUSTRIAL",
+      "INGENIERIA MECATRONICA",
+      "MAESTRIA EN ADMINISTRACION DE LA EDUCACION",
+      "MAESTRIA EN CIENCIA DE DATOS",
+      "MAESTRIA EN DERECHO ADMINISTRATIVO Y REGULACION",
+      "MAESTRIA EN DERECHO EMPRESARIAL",
+      "MAESTRIA EN DERECHO PENAL",
+      "MAESTRIA EN DIRECCION DE LA CONSTRUCCION",
+      "MAESTRIA EN GERENCIA DE OPERACIONES Y LOGISTICA",
+      "MAESTRIA EN GESTION PUBLICA Y POLITICAS PUBLICAS",
+      "MAESTRIA EN HISTORIA",
+      "MAESTRIA EN HUMANIDADES",
+      "MAESTRIA EN INGENIERIA ESTRUCTURAL",
+      "MAESTRIA EN INTERNET DE LAS COSAS",
+      "MAESTRIA EN INTERVENCION PSICOEDUCATIVA EN TRASTORNOS DEL NEURODESARROLLO Y DEL APRENDIZAJE",
+      "MAESTRIA EN PSICOLOGIA ORGANIZACIONAL",
+      "MAESTRIA EN PSICOTERAPIA",
+      "MEDICINA HUMANA",
+      "PSICOLOGIA",
+      "SEGUNDA ESPECIALIDAD EN APRENDIZAJE BASADO EN PROYECTOS",
+      "SEGUNDA ESPECIALIDAD EN DIDACTICA DE LA MATEMATICA",
+      "SEGUNDA ESPECIALIDAD EN EDUCACION RELIGIOSA",
+      "SEGUNDA ESPECIALIDAD EN PSICOLOGIA CLINICA Y DE LA SALUD"
+    ],
+    "A11_doctorado_enfermeria_en_ucsp": false
+  }
+}

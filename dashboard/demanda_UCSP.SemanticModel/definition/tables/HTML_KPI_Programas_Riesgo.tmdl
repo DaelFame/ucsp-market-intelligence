@@ -1,0 +1,1575 @@
+table HTML_KPI_Programas_Riesgo
+	lineageTag: a452d8df-bce4-48df-96e9-51b440de026b
+
+	measure HTML_KPI_Cuota_Ingresantes = ```
+			
+			-- ===== 1. TEMA =====
+			VAR ModoSeleccionado = SELECTEDVALUE ( 'Theme_Switcher'[Mode], "Dark" )
+			VAR EsLight = ( ModoSeleccionado = "Light" )
+			
+			VAR FondoTarjeta    = IF ( EsLight, "#FFFFFF", "#152B54" )
+			VAR BordeTarjeta    = IF ( EsLight, "#E2E8F0", "#2A4B8D" )
+			VAR Acento          = IF ( EsLight, "#5C1531", "#C97F9E" )
+			VAR TextoPrincipal  = IF ( EsLight, "#0F172A", "#FFFFFF" )
+			VAR TextoSecundario = IF ( EsLight, "#475569", "#CBD5E1" )
+			VAR TextoNota       = IF ( EsLight, "#64748B", "#94A3B8" )
+			VAR ColorBaja       = IF ( EsLight, "#DC2626", "#F87171" )
+			VAR ColorSube       = IF ( EsLight, "#059669", "#34D399" )
+			VAR ColorLinea      = IF ( EsLight, "#94A3B8", "#6F86B8" )
+			
+			-- ===== 2. PARAMETROS =====
+			VAR CodUcsp      = "260000062"
+			VAR AnioActual   = CALCULATE ( MAX ( 'dim_periodo'[ANIO] ), REMOVEFILTERS ( 'dim_periodo' ) )
+			VAR AnioBase     = CALCULATE ( MIN ( 'dim_periodo'[ANIO] ), REMOVEFILTERS ( 'dim_periodo' ) )
+			VAR AnioAnterior = AnioActual - 1
+			
+			-- ===== 3. SERIE ANUAL (Ingresantes Absolutos) =====
+			VAR Serie =
+			    ADDCOLUMNS (
+			        CALCULATETABLE ( VALUES ( 'dim_periodo'[ANIO] ), REMOVEFILTERS ( 'dim_periodo' ) ),
+			        "UcspAnio", CALCULATE ( [Total Ingresantes (Año)], 'dim_universidad'[CODIGO_INEI] = CodUcsp ),
+			        "MercadoAnio", CALCULATE ( [Total Ingresantes (Año)] )
+			    )
+			VAR SerieConCuota =
+			    FILTER (
+			        ADDCOLUMNS ( Serie, "CuotaAnio", DIVIDE ( [UcspAnio], [MercadoAnio] ) ),
+			        NOT ISBLANK ( [UcspAnio] )
+			    )
+			
+			-- ===== 4. VALORES DEL KPI =====
+			VAR UcspHoy    = MAXX ( FILTER ( SerieConCuota, 'dim_periodo'[ANIO] = AnioActual ), [UcspAnio] )
+			VAR MercadoHoy = MAXX ( FILTER ( SerieConCuota, 'dim_periodo'[ANIO] = AnioActual ), [MercadoAnio] )
+			VAR CuotaHoy   = MAXX ( FILTER ( SerieConCuota, 'dim_periodo'[ANIO] = AnioActual ), [CuotaAnio] )
+			VAR UcspAnt    = MAXX ( FILTER ( SerieConCuota, 'dim_periodo'[ANIO] = AnioAnterior ), [UcspAnio] )
+			
+			-- Cálculo de YoY (para mostrar si bajó o subió)
+			VAR Crecimiento = IF ( NOT ISBLANK ( UcspAnt ), DIVIDE ( UcspHoy, UcspAnt ) - 1 )
+			VAR Flecha = IF ( Crecimiento >= 0, "▲ ", "▼ " )
+			VAR ColorCrecimiento = IF ( Crecimiento >= 0, ColorSube, ColorBaja )
+			VAR SubTxt = 
+			    "<span style='color:" & ColorCrecimiento & ";font-weight:700;'>" & 
+			    Flecha & FORMAT( ABS(Crecimiento), "0.0%" ) & " VS " & AnioAnterior & 
+			    "</span>"
+			
+			-- Textos
+			VAR ValorTxt = FORMAT ( UcspHoy, "#,##0" )
+			VAR NotaFrente = "Representa el <b>" & FORMAT(CuotaHoy, "0.0%") & "</b> del mercado de Arequipa."
+			VAR TextoYoY = "En " & AnioActual & " ingresaron " & FORMAT(UcspHoy, "#,##0") & " alumnos nuevos."
+			
+			-- ===== 5. SPARKLINE (Evolución de Ingresantes Absolutos) =====
+			VAR MinAnio    = MINX ( SerieConCuota, 'dim_periodo'[ANIO] )
+			VAR MaxAnio    = MAXX ( SerieConCuota, 'dim_periodo'[ANIO] )
+			VAR VolMin     = MINX ( SerieConCuota, [UcspAnio] )
+			VAR VolMax     = MAXX ( SerieConCuota, [UcspAnio] )
+			VAR RangoVol   = VolMax - VolMin
+			
+			VAR SerieXY =
+			    ADDCOLUMNS (
+			        SerieConCuota,
+			        "PX", 14 + DIVIDE ( 'dim_periodo'[ANIO] - MinAnio, MaxAnio - MinAnio, 0 ) * 132,
+			        "PY", 22 + ( 1 - DIVIDE ( [UcspAnio] - VolMin, RangoVol, 0.5 ) ) * 26
+			    )
+			
+			VAR Puntos = CONCATENATEX ( SerieXY, FORMAT ( [PX], "0.0", "en-US" ) & "," & FORMAT ( [PY], "0.0", "en-US" ), " ", 'dim_periodo'[ANIO], ASC )
+			VAR Circulos = CONCATENATEX ( SerieXY, "<circle cx='" & FORMAT ( [PX], "0.0", "en-US" ) & "' cy='" & FORMAT ( [PY], "0.0", "en-US" ) & "' r='" & IF ( 'dim_periodo'[ANIO] = AnioActual, "4", "2.5" ) & "' fill='" & IF ( 'dim_periodo'[ANIO] = AnioActual, Acento, ColorLinea ) & "'/>", "", 'dim_periodo'[ANIO], ASC )
+			VAR EtiquetasAnio = CONCATENATEX ( SerieXY, "<text x='" & FORMAT ( [PX], "0.0", "en-US" ) & "' y='66' text-anchor='middle' font-size='10' font-weight='" & IF ( 'dim_periodo'[ANIO] = AnioActual, "700", "400" ) & "' fill='" & IF ( 'dim_periodo'[ANIO] = AnioActual, TextoPrincipal, TextoNota ) & "'>'" & RIGHT ( 'dim_periodo'[ANIO], 2 ) & "</text>", "", 'dim_periodo'[ANIO], ASC )
+			VAR EtiquetaValor = CONCATENATEX ( FILTER ( SerieXY, 'dim_periodo'[ANIO] = AnioActual ), "<text x='" & FORMAT ( [PX], "0.0", "en-US" ) & "' y='" & FORMAT ( [PY] - 8, "0.0", "en-US" ) & "' text-anchor='middle' font-size='10' font-weight='700' fill='" & Acento & "'>" & FORMAT ( [UcspAnio], "#,##0" ) & "</text>" )
+			
+			VAR Sparkline = "<svg viewBox='0 0 160 70' width='100%' height='70' preserveAspectRatio='xMidYMid meet'>" & "<polyline points='" & Puntos & "' fill='none' stroke='" & ColorLinea & "' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/>" & Circulos & EtiquetaValor & EtiquetasAnio & "</svg>"
+			
+			RETURN
+			"
+			<div class='kw'>
+			<input type='checkbox' id='kf_cing' class='kcx'>
+			<label for='kf_cing' class='kcl' title='Clic para ver evolución de ingresantes'>
+			  <div class='kcc'>
+			    <!-- FRENTE (Número Absoluto) -->
+			    <div class='kcf' style='background:" & FondoTarjeta & ";border:1px solid " & BordeTarjeta & ";border-left:5px solid " & Acento & ";'>
+			        <div class='kchd'>
+			            <span class='kct' style='color:" & TextoSecundario & ";'>Ingresantes UCSP · " & AnioActual & "</span>
+			            <span class='kci' style='border:1px solid " & Acento & ";color:" & Acento & ";'>i</span>
+			        </div>
+			        <div class='kcbody'>
+			            <!-- Aquí mostramos el número (3,313) en grande -->
+			            <div class='kcv' style='color:" & Acento & ";'>" & ValorTxt & "</div>
+			            <div class='kcs' style='color:" & TextoSecundario & ";'>" & SubTxt & "</div>
+			            <div class='kcft' style='color:" & TextoNota & ";'>" & NotaFrente & "</div>
+			        </div>
+			    </div>
+			    <!-- REVERSO (Evolución de Ingresantes) -->
+			    <div class='kcb' style='background:" & FondoTarjeta & ";border:1px solid " & BordeTarjeta & ";border-left:5px solid " & Acento & ";'>
+			        <div class='kcbt' style='color:" & Acento & ";'>Evolución de Ingresantes</div>
+			        <div class='kcbx' style='color:" & TextoSecundario & ";'>
+			            <div style='color:" & TextoPrincipal & ";font-weight:600;'>" & TextoYoY & "</div>
+			            <div style='margin-top:2px;'>Evolución histórica del volumen de alumnos nuevos.</div>
+			        </div>
+			        <div class='kcsp'>" & Sparkline & "</div>
+			        <div class='kcn' style='color:" & TextoNota & ";'>Fuente: TUNI.PE</div>
+			    </div>
+			  </div>
+			</label>
+			</div>
+			<style>
+			html,body{margin:0;height:100%;}
+			.kw{height:100%;min-height:190px;box-sizing:border-box;font-family:'Segoe UI', Roboto, Arial, sans-serif;}
+			.kcx{display:none;}
+			.kcl{display:block;height:100%;min-height:190px;cursor:pointer;}
+			.kcc{position:relative;height:100%;min-height:190px;}
+			
+			.kcf {position:relative; width:100%; min-height:190px; box-sizing:border-box; border-radius:12px; padding:16px 20px; overflow:hidden; display:flex; flex-direction:column; justify-content:space-between; transition:opacity .25s ease;}
+			.kcb {position:absolute; top:0; left:0; right:0; bottom:0; min-height:190px; box-sizing:border-box; border-radius:12px; padding:16px 20px; overflow:hidden; display:flex; flex-direction:column; opacity:0; pointer-events:none; transition:opacity .25s ease;}
+			
+			.kcx:checked ~ .kcl .kcf{opacity:0;pointer-events:none;}
+			.kcx:checked ~ .kcl .kcb{opacity:1;pointer-events:auto;}
+			
+			.kchd{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+			.kct{font-size:11px;line-height:1.3;font-weight:600;letter-spacing:.06em;text-transform:uppercase;}
+			.kci{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;font-size:11px;line-height:1;font-style:italic;font-weight:700;}
+			
+			.kcbody{display:flex;flex-direction:column;justify-content:center;flex-grow:1;margin-top:8px;}
+			/* Número más chico que el héroe, pero igual de imponente */
+			.kcv{font-size:56px;line-height:1;font-weight:700;letter-spacing:-.03em;margin-bottom:6px;}
+			.kcs{font-size:13px;line-height:1.3;font-weight:600;}
+			.kcft{font-size:12px;line-height:1.3;margin-top:4px;}
+			
+			.kcbt{font-size:11px;line-height:1.3;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;}
+			.kcbx{font-size:12px;line-height:1.4;margin-bottom:8px;}
+			.kcsp{width:100%; margin-top:auto; margin-bottom:8px;}
+			.kcn{font-size:10px;line-height:1.3;font-style:italic;border-top:1px solid " & BordeTarjeta & "; padding-top:6px;}
+			</style>
+			"
+			```
+		displayFolder: 01_Pag1_Arequipa_HTML
+		lineageTag: 1562c1a2-f9ed-400d-ae59-82e1fe962d69
+
+	measure HTML_KPI_Brecha_Lider =
+			
+			VAR Lider =
+			    [Universidad Líder Matrículas]
+			
+			VAR MatriculasLider =
+			    [Matrículas Líder]
+			
+			VAR MatriculasUCSP =
+			    [Total Matrículas UCSP]
+			
+			VAR Brecha =
+			    [Brecha Matrículas vs Líder]
+			
+			VAR BrechaAbsoluta =
+			    ABS(Brecha)
+			
+			VAR BrechaPorcentual =
+			    DIVIDE(
+			        MatriculasUCSP - MatriculasLider,
+			        MatriculasLider
+			    )
+			
+			VAR LiderFormateado =
+			    FORMAT(
+			        MatriculasLider,
+			        "#,##0"
+			    )
+			
+			VAR UCSPFormateado =
+			    FORMAT(
+			        MatriculasUCSP,
+			        "#,##0"
+			    )
+			
+			VAR BrechaFormateada =
+			    FORMAT(
+			        BrechaAbsoluta,
+			        "#,##0"
+			    )
+			
+			VAR BrechaPctFormateada =
+			    FORMAT(
+			        ABS(BrechaPorcentual),
+			        "0.0%"
+			    )
+			
+			VAR Direccion =
+			    SWITCH(
+			        TRUE(),
+			        Brecha < 0, "▼",
+			        Brecha > 0, "▲",
+			        "＝"
+			    )
+			
+			VAR ColorBrecha =
+			    SWITCH(
+			        TRUE(),
+			        Brecha < 0, "#FCA5A5",
+			        Brecha > 0, "#C97F9E",
+			        "#94A3B8"
+			    )
+			
+			VAR TextoBrecha =
+			    SWITCH(
+			        TRUE(),
+			        Brecha < 0, "POR DEBAJO DEL LÍDER",
+			        Brecha > 0, "POR ENCIMA DEL LÍDER",
+			        "MISMO VOLUMEN DEL LÍDER"
+			    )
+			
+			RETURN
+			"
+			<div style='
+			    width:100%;
+			    height:100%;
+			    box-sizing:border-box;
+			    background:#1E293B;
+			    border:1px solid #334155;
+			    border-radius:12px;
+			    padding:15px 17px;
+			    font-family:Inter,Arial,sans-serif;
+			    overflow:hidden;
+			    display:flex;
+			    flex-direction:column;
+			    justify-content:space-between;
+			'>
+			
+			    <!-- HEADER -->
+			
+			    <div style='
+			        display:flex;
+			        justify-content:space-between;
+			        align-items:flex-start;
+			    '>
+			
+			        <div>
+			
+			            <div style='
+			                color:#F1F5F9;
+			                font-size:13px;
+			                line-height:17px;
+			                font-weight:700;
+			                letter-spacing:0.06em;
+			                text-transform:uppercase;
+			            '>
+			                BRECHA VS. LÍDER
+			            </div>
+			
+			            <div style='
+			                color:#94A3B8;
+			                font-size:8px;
+			                line-height:11px;
+			                margin-top:3px;
+			                letter-spacing:0.05em;
+			                text-transform:uppercase;
+			            '>
+			                MATRÍCULAS · CONTEXTO ACTUAL
+			            </div>
+			
+			        </div>
+			
+			        <span style='
+			            color:#C97F9E;
+			            font-size:14px;
+			            line-height:14px;
+			        '>
+			            ●
+			        </span>
+			
+			    </div>
+			
+			
+			    <!-- BRECHA PRINCIPAL -->
+			
+			    <div style='
+			        display:flex;
+			        align-items:baseline;
+			        gap:9px;
+			        margin-top:4px;
+			    '>
+			
+			        <span style='
+			            color:" & ColorBrecha & ";
+			            font-family:JetBrains Mono,monospace;
+			            font-size:15px;
+			            font-weight:700;
+			        '>
+			            " & Direccion & "
+			        </span>
+			
+			        <span style='
+			            color:#F1F5F9;
+			            font-family:JetBrains Mono,monospace;
+			            font-size:27px;
+			            line-height:30px;
+			            font-weight:700;
+			            letter-spacing:-0.02em;
+			        '>
+			            " & BrechaFormateada & "
+			        </span>
+			
+			    </div>
+			
+			    <div style='
+			        color:" & ColorBrecha & ";
+			        font-size:8px;
+			        line-height:10px;
+			        font-weight:600;
+			        letter-spacing:0.06em;
+			        text-transform:uppercase;
+			        margin-top:1px;
+			    '>
+			        " & TextoBrecha & "
+			    </div>
+			
+			
+			    <!-- COMPARACIÓN -->
+			
+			    <div style='
+			        border-top:1px solid #334155;
+			        margin-top:7px;
+			        padding-top:7px;
+			    '>
+			
+			        <div style='
+			            display:flex;
+			            justify-content:space-between;
+			            align-items:center;
+			            margin-bottom:5px;
+			        '>
+			
+			            <span style='
+			                color:#94A3B8;
+			                font-size:8px;
+			                letter-spacing:0.05em;
+			                text-transform:uppercase;
+			            '>
+			                LÍDER
+			            </span>
+			
+			            <span style='
+			                color:#F1F5F9;
+			                font-size:10px;
+			                font-weight:600;
+			                max-width:210px;
+			                white-space:nowrap;
+			                overflow:hidden;
+			                text-overflow:ellipsis;
+			            '>
+			                " & Lider & "
+			            </span>
+			
+			        </div>
+			
+			
+			        <div style='
+			            display:flex;
+			            justify-content:space-between;
+			            align-items:center;
+			            margin-bottom:5px;
+			        '>
+			
+			            <span style='
+			                color:#94A3B8;
+			                font-size:8px;
+			                letter-spacing:0.05em;
+			                text-transform:uppercase;
+			            '>
+			                UCSP
+			            </span>
+			
+			            <span style='
+			                color:#C97F9E;
+			                font-family:JetBrains Mono,monospace;
+			                font-size:12px;
+			                font-weight:700;
+			            '>
+			                " & UCSPFormateado & "
+			            </span>
+			
+			        </div>
+			
+			
+			        <div style='
+			            display:flex;
+			            justify-content:space-between;
+			            align-items:center;
+			        '>
+			
+			            <span style='
+			                color:#94A3B8;
+			                font-size:8px;
+			                letter-spacing:0.05em;
+			                text-transform:uppercase;
+			            '>
+			                DIFERENCIA
+			            </span>
+			
+			            <span style='
+			                color:#CBD5E1;
+			                font-family:JetBrains Mono,monospace;
+			                font-size:10px;
+			                font-weight:600;
+			            '>
+			                " & BrechaPctFormateada & "
+			            </span>
+			
+			        </div>
+			
+			    </div>
+			
+			</div>
+			"
+		displayFolder: 02_Pag2_Regional_HTML
+		lineageTag: d1b343dc-22f9-4f0b-b3c7-9f2135ba3baa
+
+	measure HTML_KPI_Estudiantes_Unicos = ```
+			
+			-- ===== 1. TEMA =====
+			VAR ModoSeleccionado = SELECTEDVALUE('Theme_Switcher'[Mode], "Dark")
+			VAR EsLight = (ModoSeleccionado = "Light")
+			
+			VAR FondoTarjeta    = IF ( EsLight, "#FFFFFF", "#152B54" )
+			VAR BordeTarjeta    = IF ( EsLight, "#E2E8F0", "#2A4B8D" )
+			VAR Acento          = IF ( EsLight, "#5C1531", "#C97F9E" )
+			VAR TextoPrincipal  = IF ( EsLight, "#0F172A", "#FFFFFF" )
+			VAR TextoSecundario = IF ( EsLight, "#475569", "#CBD5E1" )
+			VAR TextoNota       = IF ( EsLight, "#64748B", "#94A3B8" )
+			VAR ColorSube       = IF ( EsLight, "#059669", "#34D399" )
+			VAR ColorBaja       = IF ( EsLight, "#DC2626", "#F87171" )
+			VAR ColorLinea      = IF ( EsLight, "#94A3B8", "#6F86B8" )
+			
+			-- ===== 2. PARAMETROS =====
+			VAR CodUcsp      = "260000062"
+			VAR AnioActual   = CALCULATE ( MAX('dim_periodo'[ANIO]), REMOVEFILTERS('dim_periodo') )
+			VAR AnioAnterior = AnioActual - 1
+			
+			-- ===== 3. CÁLCULO DE LA COMUNIDAD Y DESGLOSE (HOY) =====
+			VAR UcspHoy = CALCULATE ( [Estudiantes Únicos], 'dim_universidad'[CODIGO_INEI] = CodUcsp, 'dim_periodo'[ANIO] = AnioActual )
+			VAR UcspAnt = CALCULATE ( [Estudiantes Únicos], 'dim_universidad'[CODIGO_INEI] = CodUcsp, 'dim_periodo'[ANIO] = AnioAnterior )
+			
+			VAR UcspPre = CALCULATE ( [Estudiantes Únicos], 'dim_universidad'[CODIGO_INEI] = CodUcsp, 'dim_periodo'[ANIO] = AnioActual, 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL" )
+			VAR UcspPost = CALCULATE ( [Estudiantes Únicos], 'dim_universidad'[CODIGO_INEI] = CodUcsp, 'dim_periodo'[ANIO] = AnioActual, 'dim_programa'[NIVEL_ACADEMICO] IN { "MAESTRIA", "DOCTORADO", "SEGUNDA ESPECIALIDAD" } )
+			
+			-- ===== 4. CÁLCULO DEL DESGLOSE (AÑO ANTERIOR) =====
+			VAR UcspPreAnt = CALCULATE ( [Estudiantes Únicos], 'dim_universidad'[CODIGO_INEI] = CodUcsp, 'dim_periodo'[ANIO] = AnioAnterior, 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL" )
+			VAR UcspPostAnt = CALCULATE ( [Estudiantes Únicos], 'dim_universidad'[CODIGO_INEI] = CodUcsp, 'dim_periodo'[ANIO] = AnioAnterior, 'dim_programa'[NIVEL_ACADEMICO] IN { "MAESTRIA", "DOCTORADO", "SEGUNDA ESPECIALIDAD" } )
+			
+			-- Crecimientos
+			VAR CrecPre = IF(NOT ISBLANK(UcspPreAnt), DIVIDE(UcspPre, UcspPreAnt) - 1, BLANK())
+			VAR CrecPost = IF(NOT ISBLANK(UcspPostAnt), DIVIDE(UcspPost, UcspPostAnt) - 1, BLANK())
+			
+			-- Formato de Flechas
+			VAR FlechaPre = IF( CrecPre >= 0, "▲", "▼" )
+			VAR ColorPre = IF( CrecPre >= 0, ColorSube, ColorBaja )
+			VAR FlechaPost = IF( CrecPost >= 0, "▲", "▼" )
+			VAR ColorPost = IF( CrecPost >= 0, ColorSube, ColorBaja )
+			
+			VAR PctPre = DIVIDE ( UcspPre, UcspHoy )
+			VAR PctPost = DIVIDE ( UcspPost, UcspHoy )
+			
+			-- ===== 5. TEXTOS =====
+			VAR ValorTxt = FORMAT ( UcspHoy, "#,##0" )
+			VAR Crecimiento = IF ( NOT ISBLANK(UcspAnt), DIVIDE ( UcspHoy, UcspAnt ) - 1 )
+			VAR Flecha = IF ( Crecimiento >= 0, "▲ ", "▼ " )
+			VAR ColorCrecimiento = IF ( Crecimiento >= 0, ColorSube, ColorBaja )
+			VAR SubTxt = IF( ISBLANK(Crecimiento), "Año base", "<span style='color:" & ColorCrecimiento & "; font-weight:700;'>" & Flecha & FORMAT( ABS(Crecimiento), "0.0%" ) & " VS " & AnioAnterior & "</span>" )
+			
+			VAR TextoDesglose = 
+			    "De estas " & FORMAT(UcspHoy, "#,##0") & " personas:<br>" &
+			    "• <b>" & FORMAT(PctPre, "0.0%") & "</b> Pregrado (" & FORMAT(UcspPre, "#,##0") & ") " & 
+			        IF(ISBLANK(CrecPre), "", "<span style='color:" & ColorPre & "; font-size:10px;'>" & FlechaPre & FORMAT(ABS(CrecPre), "0.0%") & "</span>") & "<br>" &
+			    "• <b>" & FORMAT(PctPost, "0.0%") & "</b> Postgrado (" & FORMAT(UcspPost, "#,##0") & ") " & 
+			        IF(ISBLANK(CrecPost), "", "<span style='color:" & ColorPost & "; font-size:10px;'>" & FlechaPost & FORMAT(ABS(CrecPost), "0.0%") & "</span>")
+			
+			-- ===== 6. SPARKLINE (Evolución Histórica) =====
+			VAR Serie = 
+			    ADDCOLUMNS (
+			        CALCULATETABLE ( VALUES ( 'dim_periodo'[ANIO] ), REMOVEFILTERS ( 'dim_periodo' ) ),
+			        "AlumnosAnio", CALCULATE ( [Estudiantes Únicos], 'dim_universidad'[CODIGO_INEI] = CodUcsp )
+			    )
+			VAR SerieLimpia = FILTER ( Serie, NOT ISBLANK( [AlumnosAnio] ) )
+			
+			VAR MinAnio    = MINX ( SerieLimpia, 'dim_periodo'[ANIO] )
+			VAR MaxAnio    = MAXX ( SerieLimpia, 'dim_periodo'[ANIO] )
+			VAR VolMin     = MINX ( SerieLimpia, [AlumnosAnio] )
+			VAR VolMax     = MAXX ( SerieLimpia, [AlumnosAnio] )
+			VAR RangoVol   = VolMax - VolMin
+			
+			VAR SerieXY =
+			    ADDCOLUMNS (
+			        SerieLimpia,
+			        "PX", 14 + DIVIDE ( 'dim_periodo'[ANIO] - MinAnio, MaxAnio - MinAnio, 0 ) * 132,
+			        "PY", 22 + ( 1 - DIVIDE ( [AlumnosAnio] - VolMin, RangoVol, 0.5 ) ) * 26
+			    )
+			
+			VAR Puntos = CONCATENATEX ( SerieXY, FORMAT ( [PX], "0.0", "en-US" ) & "," & FORMAT ( [PY], "0.0", "en-US" ), " ", 'dim_periodo'[ANIO], ASC )
+			VAR Circulos = CONCATENATEX ( SerieXY, "<circle cx='" & FORMAT ( [PX], "0.0", "en-US" ) & "' cy='" & FORMAT ( [PY], "0.0", "en-US" ) & "' r='" & IF ( 'dim_periodo'[ANIO] = AnioActual, "4", "2.5" ) & "' fill='" & IF ( 'dim_periodo'[ANIO] = AnioActual, Acento, ColorLinea ) & "'/>", "", 'dim_periodo'[ANIO], ASC )
+			VAR EtiquetasAnio = CONCATENATEX ( SerieXY, "<text x='" & FORMAT ( [PX], "0.0", "en-US" ) & "' y='66' text-anchor='middle' font-size='10' font-weight='" & IF ( 'dim_periodo'[ANIO] = AnioActual, "700", "400" ) & "' fill='" & IF ( 'dim_periodo'[ANIO] = AnioActual, TextoPrincipal, TextoNota ) & "'>'" & RIGHT ( 'dim_periodo'[ANIO], 2 ) & "</text>", "", 'dim_periodo'[ANIO], ASC )
+			VAR EtiquetaValor = CONCATENATEX ( FILTER ( SerieXY, 'dim_periodo'[ANIO] = AnioActual ), "<text x='" & FORMAT ( [PX], "0.0", "en-US" ) & "' y='" & FORMAT ( [PY] - 8, "0.0", "en-US" ) & "' text-anchor='middle' font-size='10' font-weight='700' fill='" & Acento & "'>" & FORMAT ( [AlumnosAnio], "#,##0" ) & "</text>" )
+			
+			-- CORREGIDO AQUÍ: EtiquetasAnio en lugar de EtiquetasAnios
+			VAR Sparkline = "<svg viewBox='0 0 160 70' width='100%' height='70' preserveAspectRatio='xMidYMid meet'>" & "<polyline points='" & Puntos & "' fill='none' stroke='" & ColorLinea & "' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/>" & Circulos & EtiquetaValor & EtiquetasAnio & "</svg>"
+			
+			RETURN
+			"
+			<div class='kw'>
+			<input type='checkbox' id='kf_est' class='kcx'>
+			<label for='kf_est' class='kcl' title='Clic para ver desglose de la comunidad'>
+			  <div class='kcc'>
+			    <div class='kcf' style='background:" & FondoTarjeta & ";border:1px solid " & BordeTarjeta & ";border-left:5px solid " & Acento & ";'>
+			        <div class='kchd'>
+			            <span class='kct' style='color:" & TextoSecundario & ";'>Comunidad UCSP · " & AnioActual & "</span>
+			            <span class='kci' style='border:1px solid " & Acento & ";color:" & Acento & ";'>i</span>
+			        </div>
+			        <div class='kcbody'>
+			            <div class='kcv' style='color:" & Acento & ";'>" & ValorTxt & "</div>
+			            <div class='kcs' style='color:" & TextoSecundario & ";'>" & SubTxt & "</div>
+			            <div class='kcft' style='color:" & TextoNota & ";'>Personas reales en la UCSP.</div>
+			        </div>
+			    </div>
+			    <div class='kcb' style='background:" & FondoTarjeta & ";border:1px solid " & BordeTarjeta & ";border-left:5px solid " & Acento & ";'>
+			        <div class='kcbt' style='color:" & Acento & ";'>¿Quiénes componen la UCSP?</div>
+			        <div class='kcbx' style='color:" & TextoSecundario & ";'>
+			            <div style='margin-bottom:6px;'>" & TextoDesglose & "</div>
+			            <div style='font-size:10px; color:" & TextoNota & ";'>*Cada persona cuenta solo 1 vez.</div>
+			        </div>
+			        <div class='kcsp'>" & Sparkline & "</div>
+			        <div class='kcn' style='color:" & TextoNota & ";'>Evolución histórica de la comunidad.</div>
+			    </div>
+			  </div>
+			</label>
+			</div>
+			<style>
+			html,body{margin:0;height:100%;}
+			.kw{height:100%;min-height:190px;box-sizing:border-box;font-family:'Segoe UI', Roboto, Arial, sans-serif;}
+			.kcx{display:none;}
+			.kcl{display:block;height:100%;min-height:190px;cursor:pointer;}
+			.kcc{position:relative;height:100%;min-height:190px;}
+			
+			.kcf {position:relative; width:100%; min-height:190px; box-sizing:border-box; border-radius:12px; padding:16px 20px; overflow:hidden; display:flex; flex-direction:column; justify-content:space-between; transition:opacity .25s ease;}
+			.kcb {position:absolute; top:0; left:0; right:0; bottom:0; min-height:190px; box-sizing:border-box; border-radius:12px; padding:16px 20px; overflow:hidden; display:flex; flex-direction:column; opacity:0; pointer-events:none; transition:opacity .25s ease;}
+			
+			.kcx:checked ~ .kcl .kcf{opacity:0;pointer-events:none;}
+			.kcx:checked ~ .kcl .kcb{opacity:1;pointer-events:auto;}
+			
+			.kchd{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+			.kct{font-size:11px;line-height:1.3;font-weight:600;letter-spacing:.06em;text-transform:uppercase;}
+			.kci{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;font-size:11px;line-height:1;font-style:italic;font-weight:700;}
+			
+			.kcbody{display:flex;flex-direction:column;justify-content:center;flex-grow:1;margin-top:8px;}
+			.kcv{font-size:56px;line-height:1;font-weight:700;letter-spacing:-.03em;margin-bottom:6px;}
+			.kcs{font-size:13px;line-height:1.3;font-weight:600;}
+			.kcft{font-size:12px;line-height:1.3;margin-top:4px;}
+			
+			.kcbt{font-size:11px;line-height:1.3;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;}
+			.kcbx{font-size:12px;line-height:1.5;margin-bottom:8px;}
+			.kcsp{width:100%; margin-top:auto; margin-bottom:8px;}
+			.kcn{font-size:10px;line-height:1.3;font-style:italic;border-top:1px solid " & BordeTarjeta & "; padding-top:6px;}
+			</style>
+			"
+			```
+		displayFolder: 01_Pag1_Arequipa_HTML
+		lineageTag: 8f4a16c2-6a1e-4074-8fd7-fe10d29a68c9
+
+	/// Tarjeta flip: cuota de UCSP en Arequipa con delta vs 2020.
+	measure HTML_KPI_Cuota_Arequipa =
+			
+			-- ===== 1. TEMA =====
+			VAR ModoSeleccionado = SELECTEDVALUE ( 'Theme_Switcher'[Mode], "Dark" )
+			VAR EsLight = ( ModoSeleccionado = "Light" )
+			
+			VAR FondoTarjeta    = IF ( EsLight, "#FFFFFF", "#152B54" )
+			VAR BordeTarjeta    = IF ( EsLight, "#E2E8F0", "#2A4B8D" )
+			VAR Acento          = IF ( EsLight, "#5C1531", "#C97F9E" )
+			VAR TextoPrincipal  = IF ( EsLight, "#0F172A", "#FFFFFF" )
+			VAR TextoSecundario = IF ( EsLight, "#475569", "#CBD5E1" )
+			VAR TextoNota       = IF ( EsLight, "#64748B", "#94A3B8" )
+			VAR ColorBaja       = IF ( EsLight, "#DC2626", "#F87171" )
+			VAR ColorSube       = IF ( EsLight, "#059669", "#34D399" )
+			VAR ColorLinea      = IF ( EsLight, "#94A3B8", "#6F86B8" )
+			
+			-- ===== 2. PARAMETROS BLINDADOS =====
+			VAR CodUcsp      = "260000062"
+			VAR Depto        = "AREQUIPA"
+			VAR AnioActual   = CALCULATE ( MAX ( 'dim_periodo'[ANIO] ), REMOVEFILTERS ( 'dim_periodo' ) )
+			VAR AnioBase     = CALCULATE ( MIN ( 'dim_periodo'[ANIO] ), REMOVEFILTERS ( 'dim_periodo' ) )
+			VAR AnioAnterior = AnioActual - 1
+			
+			-- ===== 3. SERIE ANUAL =====
+			VAR Serie =
+			    ADDCOLUMNS (
+			        CALCULATETABLE ( VALUES ( 'dim_periodo'[ANIO] ), REMOVEFILTERS ( 'dim_periodo' ) ),
+			        "UcspAnio",
+			            CALCULATE (
+			                [Total Matrículas],
+			                'dim_universidad'[CODIGO_INEI] = CodUcsp,
+			                'dim_ubicacion'[DEPARTAMENTO] = Depto,
+			                REMOVEFILTERS ( 'dim_periodo'[SEMESTRE] )
+			            ),
+			        "MercadoAnio",
+			            CALCULATE (
+			                [Total Matrículas],
+			                'dim_ubicacion'[DEPARTAMENTO] = Depto,
+			                REMOVEFILTERS ( 'dim_periodo'[SEMESTRE] )
+			            )
+			    )
+			VAR SerieCuota =
+			    FILTER (
+			        ADDCOLUMNS ( Serie, "CuotaAnio", DIVIDE ( [UcspAnio], [MercadoAnio] ) ),
+			        NOT ISBLANK ( [CuotaAnio] )
+			    )
+			
+			-- ===== 4. VALORES DEL KPI =====
+			VAR UcspHoy    = MAXX ( FILTER ( SerieCuota, 'dim_periodo'[ANIO] = AnioActual ), [UcspAnio] )
+			VAR MercadoHoy = MAXX ( FILTER ( SerieCuota, 'dim_periodo'[ANIO] = AnioActual ), [MercadoAnio] )
+			VAR CuotaHoy   = MAXX ( FILTER ( SerieCuota, 'dim_periodo'[ANIO] = AnioActual ), [CuotaAnio] )
+			VAR CuotaBase  = MAXX ( FILTER ( SerieCuota, 'dim_periodo'[ANIO] = AnioBase ), [CuotaAnio] )
+			VAR CuotaAnt   = MAXX ( FILTER ( SerieCuota, 'dim_periodo'[ANIO] = AnioAnterior ), [CuotaAnio] )
+			
+			VAR DeltaPP_Base = IF ( NOT ISBLANK ( CuotaBase ), ( CuotaHoy - CuotaBase ) * 100 )
+			VAR DeltaPP_YoY  = IF ( NOT ISBLANK ( CuotaAnt ), ( CuotaHoy - CuotaAnt ) * 100 )
+			
+			-- ===== 5. TEXTOS =====
+			VAR ValorTxt = IF ( NOT ISBLANK ( CuotaHoy ), FORMAT ( CuotaHoy, "0.0%" ), "—" )
+			VAR DeltaColor = IF ( DeltaPP_Base < 0, ColorBaja, IF ( DeltaPP_Base > 0, ColorSube, TextoSecundario ) )
+			
+			VAR SubTxt =
+			    IF (
+			        AnioActual = AnioBase,
+			        "<span style='color:" & TextoSecundario & ";font-weight:700;'>Año base</span>",
+			        "<span style='color:" & DeltaColor & ";font-weight:700;'>"
+			            & IF ( DeltaPP_Base < 0, "▼ ", IF ( DeltaPP_Base > 0, "▲ ", "= " ) )
+			            & FORMAT ( ABS ( DeltaPP_Base ), "0.0" ) & " pp vs " & AnioBase & "</span>"
+			    )
+			
+			VAR NotaFrente = "UCSP " & FORMAT ( UcspHoy, "#,##0" ) & " de " & FORMAT ( MercadoHoy, "#,##0" ) & " matrículas"
+			
+			VAR TextoYoY =
+			    IF (
+			        ISBLANK ( DeltaPP_YoY ),
+			        "Año base de la serie.",
+			        IF (
+			            ROUND ( DeltaPP_YoY, 1 ) = 0, "Vs " & AnioAnterior & ": sin cambio.",
+			            "Vs " & AnioAnterior & ": " & IF ( DeltaPP_YoY < 0, "bajó ", "subió " ) & FORMAT ( ABS ( DeltaPP_YoY ), "0.0" ) & " pp."
+			        )
+			    )
+			
+			-- ===== 6. SPARKLINE (SVG) =====
+			VAR MinAnio    = MINX ( SerieCuota, 'dim_periodo'[ANIO] )
+			VAR MaxAnio    = MAXX ( SerieCuota, 'dim_periodo'[ANIO] )
+			VAR CuotaMin   = MINX ( SerieCuota, [CuotaAnio] )
+			VAR CuotaMax   = MAXX ( SerieCuota, [CuotaAnio] )
+			VAR RangoCuota = CuotaMax - CuotaMin
+			
+			VAR SerieXY =
+			    ADDCOLUMNS (
+			        SerieCuota,
+			        "PX", 14 + DIVIDE ( 'dim_periodo'[ANIO] - MinAnio, MaxAnio - MinAnio, 0 ) * 132,
+			        "PY", 22 + ( 1 - DIVIDE ( [CuotaAnio] - CuotaMin, RangoCuota, 0.5 ) ) * 26
+			    )
+			
+			VAR Puntos =
+			    CONCATENATEX (
+			        SerieXY,
+			        FORMAT ( [PX], "0.0", "en-US" ) & "," & FORMAT ( [PY], "0.0", "en-US" ),
+			        " ", 'dim_periodo'[ANIO], ASC
+			    )
+			
+			VAR Circulos =
+			    CONCATENATEX (
+			        SerieXY,
+			        "<circle cx='" & FORMAT ( [PX], "0.0", "en-US" )
+			            & "' cy='" & FORMAT ( [PY], "0.0", "en-US" )
+			            & "' r='" & IF ( 'dim_periodo'[ANIO] = AnioActual, "4", "2.5" )
+			            & "' fill='" & IF ( 'dim_periodo'[ANIO] = AnioActual, Acento, ColorLinea ) & "'/>",
+			        "", 'dim_periodo'[ANIO], ASC
+			    )
+			
+			VAR EtiquetasAnio =
+			    CONCATENATEX (
+			        SerieXY,
+			        "<text x='" & FORMAT ( [PX], "0.0", "en-US" )
+			            & "' y='66' text-anchor='middle' font-size='10' font-weight='"
+			            & IF ( 'dim_periodo'[ANIO] = AnioActual, "700", "400" )
+			            & "' fill='" & IF ( 'dim_periodo'[ANIO] = AnioActual, TextoPrincipal, TextoNota ) & "'>'"
+			            & RIGHT ( 'dim_periodo'[ANIO], 2 ) & "</text>",
+			        "", 'dim_periodo'[ANIO], ASC
+			    )
+			
+			VAR EtiquetaValor =
+			    CONCATENATEX (
+			        FILTER ( SerieXY, 'dim_periodo'[ANIO] = AnioActual ),
+			        "<text x='" & FORMAT ( [PX], "0.0", "en-US" )
+			            & "' y='" & FORMAT ( [PY] - 8, "0.0", "en-US" )
+			            & "' text-anchor='middle' font-size='11' font-weight='700' fill='" & Acento & "'>"
+			            & FORMAT ( [CuotaAnio], "0.0%" ) & "</text>"
+			    )
+			
+			-- CORREGIDO AQUÍ: EtiquetasAnio en lugar de EtiquetasAnios
+			VAR Sparkline =
+			    "<svg viewBox='0 0 160 70' width='100%' height='70' preserveAspectRatio='xMidYMid meet'>"
+			        & "<polyline points='" & Puntos & "' fill='none' stroke='" & ColorLinea
+			        & "' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/>"
+			        & Circulos & EtiquetaValor & EtiquetasAnio
+			        & "</svg>"
+			
+			RETURN
+			"
+			<div class='kw'>
+			<input type='checkbox' id='kf_aqp' class='kcx'>
+			<label for='kf_aqp' class='kcl' title='Foto histórica 2020 - 2025. No responde a filtros.'>
+			  <div class='kcc'>
+			
+			    <!-- FRENTE -->
+			    <div class='kcf' style='background:" & FondoTarjeta & ";border:1px solid " & BordeTarjeta & ";border-left:5px solid " & Acento & ";'>
+			        <div class='kchd'>
+			            <span class='kct' style='color:" & TextoSecundario & ";'>Foto Histórica · " & AnioBase & " a " & AnioActual & "</span>
+			            <span class='kci' style='border:1px solid " & Acento & ";color:" & Acento & ";'>i</span>
+			        </div>
+			        <div class='kcbody'>
+			            <div class='kcv' style='color:" & Acento & ";'>" & ValorTxt & "</div>
+			            <div class='kcs' style='color:" & TextoSecundario & ";'>" & SubTxt & "</div>
+			            <div class='kcft' style='color:" & TextoNota & ";'>" & NotaFrente & "</div>
+			        </div>
+			    </div>
+			
+			    <!-- REVERSO -->
+			    <div class='kcb' style='background:" & FondoTarjeta & ";border:1px solid " & BordeTarjeta & ";border-left:5px solid " & Acento & ";'>
+			        <div class='kcbt' style='color:" & Acento & ";'>Cómo se lee · " & AnioActual & "</div>
+			        <div class='kcbx' style='color:" & TextoSecundario & ";'>
+			            <div>Cuota = matrículas UCSP ÷ Arequipa</div>
+			            <div>pp = puntos porcentuales</div>
+			            <div style='color:" & TextoPrincipal & ";font-weight:600;margin-top:4px;'>" & TextoYoY & "</div>
+			        </div>
+			        <div class='kcsp'>" & Sparkline & "</div>
+			        <div class='kcn' style='color:" & TextoNota & ";'>Fuente: matrículas TUNI.PE</div>
+			    </div>
+			
+			  </div>
+			</label>
+			</div>
+			<style>
+			html,body{margin:0;height:100%;}
+			.kw{height:100%;min-height:212px;box-sizing:border-box;font-family:'Segoe UI', Roboto, Arial, sans-serif;}
+			.kcx{display:none;}
+			.kcl{display:block;height:100%;min-height:212px;cursor:pointer;}
+			.kcc{position:relative;height:100%;min-height:212px;}
+			.kcf {position:relative; width:100%; min-height:212px; box-sizing:border-box; border-radius:12px; padding:16px 20px; overflow:hidden; display:flex; flex-direction:column; justify-content:space-between; transition:opacity .25s ease;}
+			.kcb {position:absolute; top:0; left:0; right:0; bottom:0; min-height:212px; box-sizing:border-box; border-radius:12px; padding:16px 20px; overflow:hidden; display:flex; flex-direction:column; opacity:0; pointer-events:none; transition:opacity .25s ease;}
+			.kcx:checked ~ .kcl .kcf{opacity:0;pointer-events:none;}
+			.kcx:checked ~ .kcl .kcb{opacity:1;pointer-events:auto;}
+			.kchd{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+			.kct{font-size:12px;line-height:1.3;font-weight:600;letter-spacing:.06em;text-transform:uppercase;}
+			.kci{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;font-size:12px;line-height:1;font-style:italic;font-weight:700;}
+			.kcbody{display:flex;flex-direction:column;justify-content:center;flex-grow:1;margin-top:10px;}
+			.kcv{font-size:72px;line-height:1;font-weight:700;letter-spacing:-.03em;margin-bottom:8px;}
+			.kcs{font-size:15px;line-height:1.3;font-weight:600;}
+			.kcft{font-size:13px;line-height:1.3;margin-top:6px;}
+			.kcbt{font-size:12px;line-height:1.3;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px;}
+			.kcbx{font-size:13px;line-height:1.5;margin-bottom:10px;}
+			.kcsp{width:100%; margin-top:auto; margin-bottom:10px;}
+			.kcn{font-size:10px;line-height:1.3;font-style:italic;border-top:1px solid " & BordeTarjeta & "; padding-top:8px;}
+			</style>
+			"
+		displayFolder: 01_Pag1_Arequipa_HTML
+		lineageTag: e6588aea-c64c-47f4-99c0-3138771b1800
+
+	/// Ranking de universidades en Arequipa, UTP destacada en ámbar.
+	measure HTML_Ranking_Competidores_Arequipa =
+			VAR Modo = SELECTEDVALUE ( 'Theme_Switcher'[Mode], "Dark" )
+			VAR EsLight = ( Modo = "Light" )
+			VAR FondoTarjeta = IF ( EsLight, "#FFFFFF", "#152B54" )
+			VAR BordeTarjeta = IF ( EsLight, "#E2E8F0", "#2A4B8D" )
+			VAR Acento = IF ( EsLight, "#5C1531", "#C97F9E" )
+			VAR TextoPrincipal = IF ( EsLight, "#0F172A", "#FFFFFF" )
+			VAR TextoSecundario = IF ( EsLight, "#475569", "#CBD5E1" )
+			VAR TextoNota = IF ( EsLight, "#64748B", "#94A3B8" )
+			VAR BarraFondo = IF ( EsLight, "#E2E8F0", "#1E3A6B" )
+			VAR ColorDist = "#F59E0B"
+			VAR ColorSemi = "#94A3B8"
+			VAR ColorPres = IF ( EsLight, "#CBD5E1", "#475569" )
+			VAR ColorBien = IF ( EsLight, "#059669", "#34D399" )
+			VAR Base = ADDCOLUMNS ( SUMMARIZE ( 'dim_universidad', 'dim_universidad'[NOMBRE_ENTIDAD] ),
+			    "_m", CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_periodo'[ANIO] = 2025, 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL" ),
+			    "_p", CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_periodo'[ANIO] = 2025, 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_programa'[MODALIDAD] <> "Sin información", NOT CONTAINSSTRING ( 'dim_programa'[MODALIDAD], "A distancia" ), NOT CONTAINSSTRING ( 'dim_programa'[MODALIDAD], "Semi-Presencial" ) ),
+			    "_s", CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_periodo'[ANIO] = 2025, 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", CONTAINSSTRING ( 'dim_programa'[MODALIDAD], "Semi-Presencial" ), NOT CONTAINSSTRING ( 'dim_programa'[MODALIDAD], "A distancia" ) ),
+			    "_d", CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_periodo'[ANIO] = 2025, 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", CONTAINSSTRING ( 'dim_programa'[MODALIDAD], "A distancia" ) ) )
+			VAR Ranked = TOPN ( 6, FILTER ( Base, [_m] > 0 ), [_m], DESC )
+			VAR MaxM = MAXX ( Ranked, [_m] )
+			VAR FilasF = CONCATENATEX ( Ranked,
+			    VAR Nom = 'dim_universidad'[NOMBRE_ENTIDAD]
+			    VAR EsUcsp = CONTAINSSTRING ( Nom, "CATOLICA SAN PABLO" )
+			    VAR EsNac = CONTAINSSTRING ( Nom, "SAN AGUSTIN" )
+			    VAR Corto = SWITCH ( TRUE (),
+			        EsUcsp, "UCSP",
+			        EsNac, "UNSA",
+			        CONTAINSSTRING ( Nom, "TECNOLOGICA DEL PERU" ), "UTP",
+			        CONTAINSSTRING ( Nom, "SANTA MARIA" ), "UCSM",
+			        CONTAINSSTRING ( Nom, "CONTINENTAL" ), "Continental",
+			        CONTAINSSTRING ( Nom, "SAN MARTIN" ), "USMP",
+			        Nom )
+			    VAR Marca = IF ( EsNac, "*", "" )
+			    VAR Color = IF ( EsUcsp, Acento, TextoSecundario )
+			    VAR Peso = IF ( EsUcsp, "800", "500" )
+			    VAR Ancho = FORMAT ( DIVIDE ( [_m], MaxM ) * 100, "0" )
+			    RETURN
+			        "<div class='rr'><span class='rk' style='color:" & TextoNota & ";'>" & RANKX ( Ranked, [_m], [_m], DESC ) & "</span>" &
+			        "<span class='rl2' style='color:" & Color & ";font-weight:" & Peso & ";'>" & Corto & "</span>" &
+			        "<div class='rbg' style='background:" & BarraFondo & ";'><div class='rb2' style='width:" & Ancho & "%;background:" & Color & ";'></div></div>" &
+			        "<span class='rv' style='color:" & Color & ";'>" & FORMAT ( [_m], "#,##0" ) & "</span>" &
+			        "<span class='rd' style='color:" & ColorDist & ";'>" & FORMAT ( COALESCE ( DIVIDE ( [_d], [_m] ), 0 ), "0%" ) & Marca & "</span></div>",
+			    "", [_m], DESC )
+			VAR FilasB = CONCATENATEX ( Ranked,
+			    VAR Nom = 'dim_universidad'[NOMBRE_ENTIDAD]
+			    VAR EsUcsp = CONTAINSSTRING ( Nom, "CATOLICA SAN PABLO" )
+			    VAR Corto = SWITCH ( TRUE (),
+			        EsUcsp, "UCSP",
+			        CONTAINSSTRING ( Nom, "SAN AGUSTIN" ), "UNSA",
+			        CONTAINSSTRING ( Nom, "TECNOLOGICA DEL PERU" ), "UTP",
+			        CONTAINSSTRING ( Nom, "SANTA MARIA" ), "UCSM",
+			        CONTAINSSTRING ( Nom, "CONTINENTAL" ), "Continental",
+			        CONTAINSSTRING ( Nom, "SAN MARTIN" ), "USMP",
+			        Nom )
+			    VAR Color = IF ( EsUcsp, Acento, TextoSecundario )
+			    VAR Peso = IF ( EsUcsp, "800", "500" )
+			    VAR WP = FORMAT ( DIVIDE ( [_p], [_m] ) * 100, "0" )
+			    VAR WS = FORMAT ( DIVIDE ( [_s], [_m] ) * 100, "0" )
+			    VAR WD = FORMAT ( DIVIDE ( [_d], [_m] ) * 100, "0" )
+			    RETURN
+			        "<div class='rr'><span class='rl2' style='color:" & Color & ";font-weight:" & Peso & ";'>" & Corto & "</span>" &
+			        "<div class='rs'><div style='width:" & WP & "%;background:" & ColorPres & ";'></div><div style='width:" & WS & "%;background:" & ColorSemi & ";'></div><div style='width:" & WD & "%;background:" & ColorDist & ";'></div></div>" &
+			        "<span class='rd' style='color:" & ColorDist & ";'>" & FORMAT ( COALESCE ( DIVIDE ( [_d], [_m] ), 0 ), "0%" ) & "</span></div>",
+			    "", [_m], DESC )
+			VAR PreUcspTot = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_periodo'[ANIO] = 2025, 'dim_universidad'[CODIGO_INEI] = "260000062", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL" )
+			VAR PreUcspDist = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_periodo'[ANIO] = 2025, 'dim_universidad'[CODIGO_INEI] = "260000062", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", CONTAINSSTRING ( 'dim_programa'[MODALIDAD], "A distancia" ) )
+			VAR PosUcspTot = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_periodo'[ANIO] = 2025, 'dim_universidad'[CODIGO_INEI] = "260000062", 'dim_programa'[NIVEL_ACADEMICO] <> "CARRERA PROFESIONAL" )
+			VAR PosUcspDist = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_periodo'[ANIO] = 2025, 'dim_universidad'[CODIGO_INEI] = "260000062", 'dim_programa'[NIVEL_ACADEMICO] <> "CARRERA PROFESIONAL", CONTAINSSTRING ( 'dim_programa'[MODALIDAD], "A distancia" ) )
+			VAR ProgVirt = COUNTROWS ( FILTER (
+			        CALCULATETABLE ( VALUES ( 'dim_programa'[NOMBRE_PROGRAMA] ), 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_periodo'[ANIO] = 2025, 'dim_universidad'[CODIGO_INEI] = "260000062", 'dim_programa'[NIVEL_ACADEMICO] <> "CARRERA PROFESIONAL", CONTAINSSTRING ( 'dim_programa'[MODALIDAD], "A distancia" ) ),
+			        CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_periodo'[ANIO] = 2025, 'dim_universidad'[CODIGO_INEI] = "260000062", 'dim_programa'[NIVEL_ACADEMICO] <> "CARRERA PROFESIONAL", CONTAINSSTRING ( 'dim_programa'[MODALIDAD], "A distancia" ) ) > 0 ) )
+			RETURN
+			"<div class='rw'><input type='checkbox' id='kf_rank' class='rx'><label for='kf_rank' class='rl'><div class='rc'>" &
+			"<div class='rf' style='background:" & FondoTarjeta & ";border:1px solid " & BordeTarjeta & ";'>" &
+			"<div class='rtt' style='color:" & TextoPrincipal & ";'>La UCSP mantiene un pregrado presencial en un mercado universitario regional con creciente presencia de la educación a distancia.</div>" &
+			"<div class='rbody'>" & FilasF & "</div>" &
+			"<div><div class='rfoot' style='color:" & TextoPrincipal & ";'>La única privada con 0% a distancia en pregrado es UCSP.</div>" &
+			"<div class='rfoot2' style='color:" & TextoNota & ";'>* UNSA es universidad pública · matrículas de pregrado · Arequipa 2025 · ámbar = % a distancia · clic para el detalle</div></div>" &
+			"</div>" &
+			"<div class='rb' style='background:" & FondoTarjeta & ";border:1px solid " & BordeTarjeta & ";border-left:3px solid " & ColorDist & ";'>" &
+			"<div class='rh'><span class='rt' style='color:" & ColorDist & ";'>Pregrado 0% · Posgrado " & FORMAT ( COALESCE ( DIVIDE ( PosUcspDist, PosUcspTot ), 0 ), "0%" ) & "</span><span class='rn' style='color:" & TextoNota & ";'>clic para volver</span></div>" &
+			"<div class='rbody'>" & FilasB & "</div>" &
+			"<div class='rleg' style='color:" & TextoNota & ";'><span><span class='rdot' style='background:" & ColorPres & ";'></span>Presencial</span><span><span class='rdot' style='background:" & ColorSemi & ";'></span>Semi</span><span><span class='rdot' style='background:" & ColorDist & ";'></span>A distancia</span></div>" &
+			"<div class='rsep' style='border-color:" & BordeTarjeta & ";'></div>" &
+			"<div class='rmini'>" &
+			"<div class='rmi'><div class='rmil' style='color:" & TextoNota & ";'>UCSP pregrado</div><div class='rmiv' style='color:" & ColorDist & ";'>" & FORMAT ( COALESCE ( DIVIDE ( PreUcspDist, PreUcspTot ), 0 ), "0%" ) & "</div></div>" &
+			"<div class='rmi'><div class='rmil' style='color:" & TextoNota & ";'>UCSP posgrado</div><div class='rmiv' style='color:" & ColorBien & ";'>" & FORMAT ( COALESCE ( DIVIDE ( PosUcspDist, PosUcspTot ), 0 ), "0%" ) & "</div></div>" &
+			"<div class='rmi'><div class='rmil' style='color:" & TextoNota & ";'>Programas con virtualidad</div><div class='rmiv' style='color:" & TextoPrincipal & ";'>" & ProgVirt & "</div></div>" &
+			"</div>" &
+			"<div class='rnote' style='color:" & TextoPrincipal & ";'>La capacidad virtual <span style='color:" & ColorBien & ";'>ya está instalada</span>: solo no se usa en pregrado.</div>" &
+			"</div>" &
+			"</div></label></div>" & "<style>.rw{height:100%;min-height:290px;box-sizing:border-box;font-family:Segoe UI,Roboto,Arial,sans-serif;}.rx{display:none;}.rl{display:block;height:100%;min-height:290px;cursor:pointer;}.rc{position:relative;height:100%;min-height:290px;}.rf,.rb{position:absolute;top:0;left:0;right:0;bottom:0;min-height:290px;box-sizing:border-box;border-radius:10px;padding:14px 16px;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;transition:opacity .25s;}.rb{opacity:0;pointer-events:none;}.rx:checked ~ .rl .rf{opacity:0;pointer-events:none;}.rx:checked ~ .rl .rb{opacity:1;pointer-events:auto;}.rh{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:4px;}.rtt{font-size:12.5px;font-weight:700;line-height:1.35;margin-bottom:8px;}.rt{font-size:13.5px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;line-height:1.15;}.rn{font-size:9.5px;font-style:italic;white-space:nowrap;}.rbody{display:flex;flex-direction:column;justify-content:center;flex:1;}.rr{display:flex;align-items:center;gap:6px;margin-bottom:6px;}.rk{width:14px;text-align:right;font-weight:700;font-size:12px;flex:none;}.rl2{width:76px;flex:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12.5px;}.rbg{flex:1;height:10px;border-radius:5px;overflow:hidden;}.rb2{height:10px;border-radius:5px;}.rv{width:54px;flex:none;text-align:right;font-weight:800;font-size:13px;}.rd{width:44px;flex:none;text-align:right;font-weight:800;font-size:13px;}.rs{display:flex;height:10px;border-radius:5px;overflow:hidden;flex:1;}.rleg{display:flex;gap:12px;font-size:9.5px;margin-top:2px;}.rdot{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;}.rsep{border-top:1px solid;margin:7px 0 6px;}.rmini{display:flex;gap:10px;align-items:flex-end;}.rmi{flex:1;}.rmil{font-size:8px;text-transform:uppercase;letter-spacing:.03em;font-weight:700;line-height:1.2;}.rmiv{font-size:22px;font-weight:800;line-height:1.1;}.rfoot{font-size:10.5px;font-weight:700;line-height:1.3;}.rfoot2{font-size:9.5px;font-weight:500;line-height:1.3;margin-top:3px;}.rnote{font-size:10.5px;font-weight:600;line-height:1.35;margin-top:7px;}</style>"
+		displayFolder: 01_Pag1_Arequipa_HTML
+		lineageTag: bdeafdbe-11c1-4641-b0c7-10d9a27e35e4
+
+	/// Banner de insight con delta de cuota y crecimiento del mercado.
+	measure HTML_Tendencia_Competidores =
+			VAR Modo = SELECTEDVALUE ( 'Theme_Switcher'[Mode], "Dark" )
+			VAR EsLight = ( Modo = "Light" )
+			VAR FondoTarjeta = IF ( EsLight, "#FFFFFF", "#152B54" )
+			VAR BordeTarjeta = IF ( EsLight, "#E2E8F0", "#2A4B8D" )
+			VAR Acento = IF ( EsLight, "#5C1531", "#C97F9E" )
+			VAR TextoPrincipal = IF ( EsLight, "#0F172A", "#FFFFFF" )
+			VAR TextoSecundario = IF ( EsLight, "#475569", "#CBD5E1" )
+			VAR TextoNota = IF ( EsLight, "#64748B", "#94A3B8" )
+			VAR BarraFondo = IF ( EsLight, "#E2E8F0", "#1E3A6B" )
+			VAR ColorDist = "#F59E0B"
+			VAR Base = ADDCOLUMNS ( SUMMARIZE ( 'dim_universidad', 'dim_universidad'[NOMBRE_ENTIDAD] ),
+			    "_20", CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2020 ),
+			    "_25", CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2025 ),
+			    "_d25", CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2025, CONTAINSSTRING ( 'dim_programa'[MODALIDAD], "A distancia" ) ) )
+			VAR F = FILTER ( Base,
+			    [_25] >= 500 && [_20] > 0 &&
+			    NOT CONTAINSSTRING ( 'dim_universidad'[NOMBRE_ENTIDAD], "SAN AGUSTIN" ) &&
+			    NOT CONTAINSSTRING ( 'dim_universidad'[NOMBRE_ENTIDAD], "CONSERVATORIO" ) )
+			VAR F2 = ADDCOLUMNS ( F,
+			    "_gan", [_25] - [_20],
+			    "_crec", DIVIDE ( [_25] - [_20], [_20] ),
+			    "_virt", COALESCE ( DIVIDE ( [_d25], [_25] ), 0 ) )
+			VAR Top5 = TOPN ( 5, F2, [_25], DESC )
+			VAR MaxGan = MAXX ( Top5, [_gan] )
+			VAR OrdenGan = TOPN ( 5, Top5, [_gan], DESC )
+			VAR OrdenCrec = TOPN ( 5, Top5, [_crec], DESC )
+			VAR Mx = AVERAGEX ( Top5, [_virt] )
+			VAR My = AVERAGEX ( Top5, [_crec] )
+			VAR Sxy = SUMX ( Top5, ( [_virt] - Mx ) * ( [_crec] - My ) )
+			VAR Sxx = SUMX ( Top5, POWER ( [_virt] - Mx, 2 ) )
+			VAR Syy = SUMX ( Top5, POWER ( [_crec] - My, 2 ) )
+			VAR R = DIVIDE ( Sxy, SQRT ( Sxx * Syy ) )
+			VAR GanUtp = MAXX ( FILTER ( Top5, CONTAINSSTRING ( 'dim_universidad'[NOMBRE_ENTIDAD], "TECNOLOGICA DEL PERU" ) ), [_gan] )
+			VAR GanUcsp = MAXX ( FILTER ( Top5, CONTAINSSTRING ( 'dim_universidad'[NOMBRE_ENTIDAD], "SAN PABLO" ) ), [_gan] )
+			VAR FilasGan = CONCATENATEX ( OrdenGan,
+			    VAR Nom = 'dim_universidad'[NOMBRE_ENTIDAD]
+			    VAR EsUcsp = CONTAINSSTRING ( Nom, "SAN PABLO" )
+			    VAR Corto = SWITCH ( TRUE (),
+			        EsUcsp, "UCSP",
+			        CONTAINSSTRING ( Nom, "TECNOLOGICA DEL PERU" ), "UTP",
+			        CONTAINSSTRING ( Nom, "SANTA MARIA" ), "UCSM",
+			        CONTAINSSTRING ( Nom, "CONTINENTAL" ), "Continental",
+			        CONTAINSSTRING ( Nom, "SAN MARTIN" ), "USMP",
+			        Nom )
+			    VAR Color = SWITCH ( TRUE (),
+			        EsUcsp, Acento,
+			        CONTAINSSTRING ( Nom, "TECNOLOGICA DEL PERU" ), ColorDist,
+			        TextoSecundario )
+			    VAR Peso = IF ( EsUcsp || CONTAINSSTRING ( Nom, "TECNOLOGICA DEL PERU" ), "800", "500" )
+			    VAR Ancho = FORMAT ( DIVIDE ( [_gan], MaxGan ) * 100, "0" )
+			    VAR MiM = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2025 )
+			    VAR Pos = 1 + COUNTROWS ( FILTER ( ALL ( 'dim_universidad'[NOMBRE_ENTIDAD] ), CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2025 ) > MiM ) )
+			    RETURN
+			        "<div class='tr'><span class='tp' style='color:" & TextoNota & ";'>" & Pos & "</span>" &
+			        "<span class='tl2' style='color:" & Color & ";font-weight:" & Peso & ";'>" & Corto & "</span>" &
+			        "<div class='tbg' style='background:" & BarraFondo & ";'><div class='tbr' style='width:" & Ancho & "%;background:" & Color & ";'></div></div>" &
+			        "<span class='tg' style='color:" & Color & ";'>+" & FORMAT ( [_gan], "#,##0" ) & "</span>" &
+			        "<span class='tc2' style='color:" & TextoNota & ";'>" & FORMAT ( [_crec], "+0%;-0%" ) & "</span></div>",
+			    "", [_gan], DESC )
+			VAR FilasCrec = CONCATENATEX ( OrdenCrec,
+			    VAR Nom = 'dim_universidad'[NOMBRE_ENTIDAD]
+			    VAR EsUcsp = CONTAINSSTRING ( Nom, "SAN PABLO" )
+			    VAR Corto = SWITCH ( TRUE (),
+			        EsUcsp, "UCSP",
+			        CONTAINSSTRING ( Nom, "TECNOLOGICA DEL PERU" ), "UTP",
+			        CONTAINSSTRING ( Nom, "SANTA MARIA" ), "UCSM",
+			        CONTAINSSTRING ( Nom, "CONTINENTAL" ), "Continental",
+			        CONTAINSSTRING ( Nom, "SAN MARTIN" ), "USMP",
+			        Nom )
+			    VAR Color = SWITCH ( TRUE (),
+			        EsUcsp, Acento,
+			        CONTAINSSTRING ( Nom, "TECNOLOGICA DEL PERU" ), ColorDist,
+			        TextoSecundario )
+			    VAR Peso = IF ( EsUcsp || CONTAINSSTRING ( Nom, "TECNOLOGICA DEL PERU" ), "800", "500" )
+			    VAR Ancho = FORMAT ( MIN ( DIVIDE ( [_virt], 0.8 ) * 100, 100 ), "0" )
+			    VAR MiM = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2025 )
+			    VAR Pos = 1 + COUNTROWS ( FILTER ( ALL ( 'dim_universidad'[NOMBRE_ENTIDAD] ), CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2025 ) > MiM ) )
+			    RETURN
+			        "<div class='tr'><span class='tp' style='color:" & TextoNota & ";'>" & Pos & "</span>" &
+			        "<span class='tl2' style='color:" & Color & ";font-weight:" & Peso & ";'>" & Corto & "</span>" &
+			        "<div class='tbg' style='background:" & BarraFondo & ";'><div class='tbr' style='width:" & Ancho & "%;background:" & ColorDist & ";'></div></div>" &
+			        "<span class='tv' style='color:" & ColorDist & ";'>" & FORMAT ( [_virt], "0%" ) & "</span>" &
+			        "<span class='tc2' style='color:" & Color & ";'>" & FORMAT ( [_crec], "+0%;-0%" ) & "</span></div>",
+			    "", [_crec], DESC )
+			RETURN
+			"<div class='tw'><input type='checkbox' id='kf_tend' class='tx'><label for='kf_tend' class='tl'><div class='tc'>" &
+			"<div class='tf' style='background:" & FondoTarjeta & ";border:1px solid " & BordeTarjeta & ";'>" &
+			"<div class='th'><span class='tt' style='color:" & TextoPrincipal & ";'>Quién ganó Arequipa</span><span class='tn' style='color:" & TextoNota & ";'>2020 → 2025 · clic</span></div>" &
+			"<div><div class='tbig' style='color:" & ColorDist & ";'>" & FORMAT ( GanUtp, "#,##0" ) & "</div>" &
+			"<div class='tsub' style='color:" & TextoSecundario & ";'>alumnos ganó <b>UTP</b> · UCSP ganó <b>" & FORMAT ( GanUcsp, "#,##0" ) & "</b></div></div>" &
+			"<div class='tbody'>" & FilasGan & "</div>" &
+			"<div><div class='tfoot' style='color:" & TextoPrincipal & ";'>Por cada alumno que ganó UCSP, UTP ganó " & FORMAT ( DIVIDE ( GanUtp, GanUcsp ), "0" ) & ".</div>" &
+			"<div class='tfoot2' style='color:" & TextoNota & ";'>Top 5 privadas de Arequipa · el puesto es el ranking general 2025 (el #2 es la UNSA, pública)</div></div>" &
+			"</div>" &
+			"<div class='tb' style='background:" & FondoTarjeta & ";border:1px solid " & BordeTarjeta & ";border-left:3px solid " & ColorDist & ";'>" &
+			"<div class='th'><span class='tt' style='color:" & ColorDist & ";'>Virtualidad y crecimiento</span><span class='tn' style='color:" & TextoNota & ";'>correlación " & FORMAT ( R, "0.00" ) & " · clic</span></div>" &
+			"<div class='tbody'>" & FilasCrec & "</div>" &
+			"<div><div class='tfoot' style='color:" & TextoPrincipal & ";'>Las dos que más crecieron son las dos más virtuales.</div>" &
+			"<div class='tfoot2' style='color:" & TextoNota & ";'>Barra ámbar = % a distancia 2025 · ordenado por crecimiento · 5 privadas, sin la UNSA (pública)</div></div>" &
+			"</div>" &
+			"</div></label></div>" & "<style>.tw{height:100%;min-height:290px;box-sizing:border-box;font-family:Segoe UI,Roboto,Arial,sans-serif;}.tx{display:none;}.tl{display:block;height:100%;min-height:290px;cursor:pointer;}.tc{position:relative;height:100%;min-height:290px;}.tf,.tb{position:absolute;top:0;left:0;right:0;bottom:0;min-height:290px;box-sizing:border-box;border-radius:10px;padding:14px 16px;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;transition:opacity .25s;}.tb{opacity:0;pointer-events:none;}.tx:checked ~ .tl .tf{opacity:0;pointer-events:none;}.tx:checked ~ .tl .tb{opacity:1;pointer-events:auto;}.th{display:flex;justify-content:space-between;align-items:baseline;gap:8px;}.tt{font-size:13px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;line-height:1.15;}.tn{font-size:9px;font-style:italic;white-space:nowrap;}.tbig{font-size:34px;font-weight:800;line-height:1;letter-spacing:-.02em;}.tsub{font-size:10px;line-height:1.3;margin-top:2px;}.tbody{display:flex;flex-direction:column;justify-content:center;flex:1;}.tr{display:flex;align-items:center;gap:6px;margin-bottom:8px;}.tp{width:14px;flex:none;text-align:right;font-weight:700;font-size:11.5px;}.tl2{width:72px;flex:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12.5px;}.tbg{flex:1;height:11px;border-radius:5px;overflow:hidden;}.tbr{height:11px;border-radius:5px;}.tg{width:58px;flex:none;text-align:right;font-weight:800;font-size:12.5px;}.tc2{width:46px;flex:none;text-align:right;font-weight:800;font-size:12.5px;}.tv{width:42px;flex:none;text-align:right;font-weight:800;font-size:12.5px;}.tfoot{font-size:10.5px;font-weight:700;line-height:1.35;}.tfoot2{font-size:9.5px;font-weight:500;line-height:1.35;margin-top:3px;}</style>"
+		displayFolder: 01_Pag1_Arequipa_HTML
+		lineageTag: 1e288e7a-200a-48f7-a619-498be24bfe71
+
+	measure HTML_Ingresantes_vs_Matriculados_Tabla =
+			-- ===== 1. TEMA =====
+			VAR ModoSeleccionado = SELECTEDVALUE ( 'Theme_Switcher'[Mode], "Dark" )
+			VAR EsLight = ( ModoSeleccionado = "Light" )
+			
+			VAR FondoTarjeta    = IF ( EsLight, "#FFFFFF", "#152B54" )
+			VAR BordeTarjeta    = IF ( EsLight, "#E2E8F0", "#2A4B8D" )
+			VAR TextoPrincipal  = IF ( EsLight, "#0F172A", "#FFFFFF" )
+			VAR TextoSecundario = IF ( EsLight, "#475569", "#CBD5E1" )
+			VAR TextoNota       = IF ( EsLight, "#64748B", "#94A3B8" )
+			VAR Acento          = IF ( EsLight, "#5C1531", "#C97F9E" )
+			VAR ColorNuevos     = IF ( EsLight, "#6A1B3D", "#C97F9E" )
+			VAR ColorAntiguos   = IF ( EsLight, "#94A3B8", "#475569" )
+			VAR LabelNuevos     = IF ( EsLight, "#FFFFFF", "#152B54" )
+			VAR LabelAntiguos   = IF ( EsLight, "#0F172A", "#FFFFFF" )
+			VAR FondoBarra      = IF ( EsLight, "#E2E8F0", "#1E3A6B" )
+			
+			-- ===== 2. DATOS =====
+			VAR Anios = VALUES ( 'dim_periodo'[ANIO] )
+			VAR AnioFin = MAXX ( Anios, 'dim_periodo'[ANIO] )
+			
+			VAR P =
+			    ADDCOLUMNS (
+			        Anios,
+			        "_mat", CALCULATE ( [Total Matrículas], 'dim_universidad'[CODIGO_INEI] = "260000062", 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", REMOVEFILTERS ( 'dim_periodo'[SEMESTRE] ) ),
+			        "_ing", CALCULATE ( [Total Ingresantes (Año)], 'dim_universidad'[CODIGO_INEI] = "260000062", 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA" )
+			    )
+			
+			VAR P2 =
+			    ADDCOLUMNS(
+			        P,
+			        "_ant", [_mat] - [_ing],
+			        "_pctNuevos", DIVIDE([_ing], [_mat]) * 100,
+			        "_pctAntiguos", DIVIDE([_mat] - [_ing], [_mat]) * 100
+			    )
+			
+			-- ===== 3. FILAS =====
+			VAR Filas =
+			    CONCATENATEX (
+			        P2,
+			        VAR Anio = 'dim_periodo'[ANIO]
+			        VAR Mat = [_mat]
+			        VAR Ing = [_ing]
+			        VAR Ant = [_ant]
+			        VAR PctNuevos = [_pctNuevos]
+			        VAR PctAntiguos = [_pctAntiguos]
+			        VAR EsFin = Anio = AnioFin
+			
+			        VAR PesoAnio = IF ( EsFin, "700", "500" )
+			        VAR ColorAnio = IF ( EsFin, Acento, TextoNota )
+			
+			        VAR AnchoNuevos = FORMAT(PctNuevos, "0.0", "en-US")
+			        VAR AnchoAntiguos = FORMAT(PctAntiguos, "0.0", "en-US")
+			
+			        VAR TooltipTxt = "En " & Anio & ": " & FORMAT(Ing, "#,##0") & " nuevos (" & FORMAT(PctNuevos/100, "0.0%") & ") y " & FORMAT(Ant, "#,##0") & " antiguos."
+			
+			        RETURN
+			            "<div style='display:flex; align-items:center; margin-bottom:6px; padding-bottom:4px; border-bottom:1px solid " & BordeTarjeta & "; cursor:help;' title='" & TooltipTxt & "'>" &
+			                "<div style='width:40px; color:" & ColorAnio & "; font-size:12px; font-weight:" & PesoAnio & ";'>" & Anio & "</div>" &
+			                "<div style='flex-grow:1; display:flex; height:18px; background:" & FondoBarra & "; border-radius:4px; overflow:hidden; margin-right:12px;'>" &
+			                    "<div style='background:" & ColorNuevos & "; width:" & AnchoNuevos & "%; height:100%; display:flex; align-items:center; justify-content:center;'>" &
+			                        IF(PctNuevos > 10, "<span style='color:" & LabelNuevos & "; font-size:9px; font-weight:700;'>" & FORMAT(PctNuevos/100, "0%") & "</span>", "") &
+			                    "</div>" &
+			                    "<div style='background:" & ColorAntiguos & "; width:" & AnchoAntiguos & "%; height:100%; display:flex; align-items:center; justify-content:center;'>" &
+			                        IF(PctAntiguos > 10, "<span style='color:" & LabelAntiguos & "; font-size:9px; font-weight:700;'>" & FORMAT(PctAntiguos/100, "0%") & "</span>", "") &
+			                    "</div>" &
+			                "</div>" &
+			                "<div style='width:55px; text-align:right; color:" & TextoPrincipal & "; font-size:12px; font-weight:" & PesoAnio & ";'>" & FORMAT(Mat, "#,##0") & "</div>" &
+			            "</div>",
+			        "", 'dim_periodo'[ANIO], DESC
+			    )
+			
+			RETURN
+			"
+			<div style='width:100%;height:100%;box-sizing:border-box;background:" & FondoTarjeta & ";border:1px solid " & BordeTarjeta & ";border-left:4px solid " & Acento & ";border-radius:12px;padding:16px 20px;font-family:'Segoe UI', Roboto, Arial, sans-serif;display:flex;flex-direction:column; overflow:hidden;'>
+			    <div style='display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;'>
+			        <div>
+			            <span style='color:" & TextoPrincipal & ";font-size:14px;font-weight:700;'>Composición del Alumnado</span>
+			            <div style='color:" & TextoNota & ";font-size:10px; margin-top:2px;'>Matriculados totales por año (2025 → 2020)</div>
+			        </div>
+			        <div style='display:flex; gap:12px; margin-top:2px; align-items:center;'>
+			            <span style='color:" & TextoNota & ";font-size:10px;font-weight:700;'><span style='display:inline-block;width:9px;height:9px;border-radius:2px;background:" & ColorNuevos & ";margin-right:4px;'></span>Nuevos</span>
+			            <span style='color:" & TextoNota & ";font-size:10px;font-weight:700;'><span style='display:inline-block;width:9px;height:9px;border-radius:2px;background:" & ColorAntiguos & ";margin-right:4px;'></span>Antiguos</span>
+			        </div>
+			    </div>
+			    <div style='display:flex; align-items:center; padding:0 0 4px 0; margin-bottom:6px; font-size:10px; color:" & TextoNota & "; font-weight:600; text-transform:uppercase; border-bottom:1px solid " & BordeTarjeta & ";'>
+			        <div style='width:40px;'>Año</div>
+			        <div style='flex-grow:1; padding-left:4px;'>Distribución de Alumnos</div>
+			        <div style='width:55px; text-align:right;'>Total</div>
+			    </div>
+			    <div style='flex-grow:1;'>
+			        " & Filas & "
+			    </div>
+			</div>
+			"
+		displayFolder: 01_Pag1_Arequipa_HTML
+		lineageTag: 31e35880-9819-4c42-a081-7e91d3c05328
+
+	measure HTML_KPI_Programas_Riesgo = ```
+			
+			VAR ModoSeleccionado = SELECTEDVALUE ( 'Theme_Switcher'[Mode], "Dark" )
+			VAR EsLight = ( ModoSeleccionado = "Light" )
+			VAR FondoTarjeta = IF ( EsLight, "#FFFFFF", "#152B54" )
+			VAR BordeTarjeta = IF ( EsLight, "#E2E8F0", "#2A4B8D" )
+			VAR TextoPrincipal = IF ( EsLight, "#0F172A", "#FFFFFF" )
+			VAR TextoSecundario = IF ( EsLight, "#475569", "#CBD5E1" )
+			VAR TextoNota = IF ( EsLight, "#64748B", "#94A3B8" )
+			VAR Acento = IF ( EsLight, "#5C1531", "#C97F9E" )
+			VAR ColorSube = IF ( EsLight, "#10B981", "#34D399" )
+			VAR ColorBaja = IF ( EsLight, "#EF4444", "#F87171" )
+			VAR FondoBarra = IF ( EsLight, "#F1F5F9", "#0F172A" )
+			VAR FondoTab = IF ( EsLight, "#F1F5F9", "#0F172A" )
+			
+			VAR AnioActual = CALCULATE ( MAX('dim_periodo'[ANIO]), REMOVEFILTERS('dim_periodo') )
+			VAR AnioAnterior = AnioActual - 1
+			VAR CodUcsp = "260000062"
+			
+			VAR BasePre = ADDCOLUMNS(FILTER(VALUES('dim_programa'[NOMBRE_PROGRAMA]), CALCULATE([Total Matrículas], 'dim_universidad'[CODIGO_INEI] = CodUcsp, 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = AnioActual, REMOVEFILTERS('dim_periodo'[SEMESTRE])) > 50), "@Act", CALCULATE([Total Matrículas], 'dim_universidad'[CODIGO_INEI] = CodUcsp, 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = AnioActual, REMOVEFILTERS('dim_periodo'[SEMESTRE])), "@Ant", CALCULATE([Total Matrículas], 'dim_universidad'[CODIGO_INEI] = CodUcsp, 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = AnioAnterior, REMOVEFILTERS('dim_periodo'[SEMESTRE])))
+			VAR PreVar = ADDCOLUMNS(BasePre, "@Var", DIVIDE([@Act] - [@Ant], [@Ant]))
+			VAR Top5Pre = TOPN(5, PreVar, [@Var], DESC)
+			VAR Bot5Pre = TOPN(5, PreVar, [@Var], ASC)
+			VAR MaxVarPre = MAXX(UNION(SELECTCOLUMNS(Top5Pre, "v", ABS([@Var])), SELECTCOLUMNS(Bot5Pre, "v", ABS([@Var]))), [v])
+			
+			-- REDUJIMOS LOS MÁRGENES DE LAS FILAS (margin-bottom: 6px, height: 18px)
+			VAR HTML_Pre = CONCATENATEX(Top5Pre, 
+			    VAR Nom = SUBSTITUTE(SUBSTITUTE('dim_programa'[NOMBRE_PROGRAMA], "INGENIERÍA ", "ING. "), "ADMINISTRACIÓN", "ADMIN.")
+			    VAR Val = [@Var]
+			    VAR Ancho = FORMAT(DIVIDE(ABS(Val), MaxVarPre) * 100, "0")
+			    RETURN 
+			    "<div style='display:flex; align-items:center; margin-bottom:6px; height:18px;'>" &
+			        "<div style='width:45%; color:" & TextoPrincipal & "; font-size:11px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding-right:8px;'>" & Nom & "</div>" &
+			        "<div style='width:40%; background:" & FondoBarra & "; height:8px; border-radius:4px; margin-right:8px; display:flex; align-items:center;'>" &
+			            "<div style='background:" & ColorSube & "; height:8px; border-radius:4px; width:" & Ancho & "%;'></div>" &
+			        "</div>" &
+			        "<div style='width:15%; color:" & ColorSube & "; font-size:11px; font-weight:700; text-align:right;'>+" & FORMAT(Val, "0.0%") & "</div>" &
+			    "</div>", "", [@Var], DESC
+			)
+			
+			VAR HTML_Pre_Cae = CONCATENATEX(Bot5Pre, 
+			    VAR Nom = SUBSTITUTE(SUBSTITUTE('dim_programa'[NOMBRE_PROGRAMA], "INGENIERÍA ", "ING. "), "ADMINISTRACIÓN", "ADMIN.")
+			    VAR Val = [@Var]
+			    VAR Ancho = FORMAT(DIVIDE(ABS(Val), MaxVarPre) * 100, "0")
+			    RETURN 
+			    "<div style='display:flex; align-items:center; margin-bottom:6px; height:18px;'>" &
+			        "<div style='width:45%; color:" & TextoPrincipal & "; font-size:11px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding-right:8px;'>" & Nom & "</div>" &
+			        "<div style='width:40%; background:" & FondoBarra & "; height:8px; border-radius:4px; margin-right:8px; display:flex; align-items:center;'>" &
+			            "<div style='background:" & ColorBaja & "; height:8px; border-radius:4px; width:" & Ancho & "%;'></div>" &
+			        "</div>" &
+			        "<div style='width:15%; color:" & ColorBaja & "; font-size:11px; font-weight:700; text-align:right;'>" & FORMAT(Val, "0.0%") & "</div>" &
+			    "</div>", "", [@Var], ASC
+			)
+			
+			VAR BasePost = ADDCOLUMNS(FILTER(VALUES('dim_programa'[NOMBRE_PROGRAMA]), CALCULATE([Total Matrículas], 'dim_universidad'[CODIGO_INEI] = CodUcsp, 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] IN {"MAESTRIA", "DOCTORADO", "SEGUNDA ESPECIALIDAD"}, 'dim_periodo'[ANIO] = AnioActual, REMOVEFILTERS('dim_periodo'[SEMESTRE])) > 10), "@Act", CALCULATE([Total Matrículas], 'dim_universidad'[CODIGO_INEI] = CodUcsp, 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] IN {"MAESTRIA", "DOCTORADO", "SEGUNDA ESPECIALIDAD"}, 'dim_periodo'[ANIO] = AnioActual, REMOVEFILTERS('dim_periodo'[SEMESTRE])), "@Ant", CALCULATE([Total Matrículas], 'dim_universidad'[CODIGO_INEI] = CodUcsp, 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] IN {"MAESTRIA", "DOCTORADO", "SEGUNDA ESPECIALIDAD"}, 'dim_periodo'[ANIO] = AnioAnterior, REMOVEFILTERS('dim_periodo'[SEMESTRE])))
+			VAR PostVar = ADDCOLUMNS(BasePost, "@Var", DIVIDE([@Act] - [@Ant], [@Ant]))
+			VAR Top5Post = TOPN(5, PostVar, [@Var], DESC)
+			VAR Bot5Post = TOPN(5, PostVar, [@Var], ASC)
+			VAR MaxVarPost = MAXX(UNION(SELECTCOLUMNS(Top5Post, "v", ABS([@Var])), SELECTCOLUMNS(Bot5Post, "v", ABS([@Var]))), [v])
+			
+			VAR HTML_Post = CONCATENATEX(Top5Post, 
+			    VAR Nom = SUBSTITUTE(SUBSTITUTE('dim_programa'[NOMBRE_PROGRAMA], "MAESTRÍA EN ", ""), "MAESTRIA EN ", "")
+			    VAR Val = [@Var]
+			    VAR Ancho = FORMAT(DIVIDE(ABS(Val), MaxVarPost) * 100, "0")
+			    RETURN 
+			    "<div style='display:flex; align-items:center; margin-bottom:6px; height:18px;'>" &
+			        "<div style='width:45%; color:" & TextoPrincipal & "; font-size:11px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding-right:8px;'>" & Nom & "</div>" &
+			        "<div style='width:40%; background:" & FondoBarra & "; height:8px; border-radius:4px; margin-right:8px; display:flex; align-items:center;'>" &
+			            "<div style='background:" & ColorSube & "; height:8px; border-radius:4px; width:" & Ancho & "%;'></div>" &
+			        "</div>" &
+			        "<div style='width:15%; color:" & ColorSube & "; font-size:11px; font-weight:700; text-align:right;'>+" & FORMAT(Val, "0.0%") & "</div>" &
+			    "</div>", "", [@Var], DESC
+			)
+			
+			VAR HTML_Post_Cae = CONCATENATEX(Bot5Post, 
+			    VAR Nom = SUBSTITUTE(SUBSTITUTE('dim_programa'[NOMBRE_PROGRAMA], "MAESTRÍA EN ", ""), "MAESTRIA EN ", "")
+			    VAR Val = [@Var]
+			    VAR Ancho = FORMAT(DIVIDE(ABS(Val), MaxVarPost) * 100, "0")
+			    RETURN 
+			    "<div style='display:flex; align-items:center; margin-bottom:6px; height:18px;'>" &
+			        "<div style='width:45%; color:" & TextoPrincipal & "; font-size:11px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding-right:8px;'>" & Nom & "</div>" &
+			        "<div style='width:40%; background:" & FondoBarra & "; height:8px; border-radius:4px; margin-right:8px; display:flex; align-items:center;'>" &
+			            "<div style='background:" & ColorBaja & "; height:8px; border-radius:4px; width:" & Ancho & "%;'></div>" &
+			        "</div>" &
+			        "<div style='width:15%; color:" & ColorBaja & "; font-size:11px; font-weight:700; text-align:right;'>" & FORMAT(Val, "0.0%") & "</div>" &
+			    "</div>", "", [@Var], ASC
+			)
+			
+			RETURN
+			"
+			<div class='kw'>
+			    <input type='radio' id='tab_pre' name='nivel_tab' class='kcr' checked>
+			    <input type='radio' id='tab_post' name='nivel_tab' class='kcr'>
+			    
+			    <div class='kcc' style='background:" & FondoTarjeta & "; border:1px solid " & BordeTarjeta & "; border-left:4px solid " & Acento & ";'>
+			        
+			        <!-- REDUJIMOS EL PADDING SUPERIOR Y EL MARGEN DEL TÍTULO -->
+			        <div style='padding: 12px 16px 0 16px;'>
+			            <div style='display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;'>
+			                <span style='color:" & TextoPrincipal & "; font-size:15px; font-weight:700;'>Radiografía Académica UCSP</span>
+			                <span style='color:" & TextoNota & "; font-size:11px;'>" & AnioActual & "</span>
+			            </div>
+			            
+			            <div style='display:flex; background:" & FondoTab & "; border-radius:8px; padding:4px; margin-bottom:8px;'>
+			                <label for='tab_pre' class='tab-btn tab-pre' style='color:" & TextoPrincipal & ";'>PREGRADO</label>
+			                <label for='tab_post' class='tab-btn tab-post' style='color:" & TextoPrincipal & ";'>POSTGRADO</label>
+			            </div>
+			        </div>
+			
+			        <div class='tab-content content-pre'>
+			            <div style='display:flex; gap:16px; flex-grow:1; padding: 0 16px 12px 16px;'>
+			                <div style='flex:1;'>
+			                    <div style='color:" & ColorSube & "; font-size:10px; font-weight:700; letter-spacing:0.05em; margin-bottom:6px;'>▲ MAYOR CRECIMIENTO</div>
+			                    " & HTML_Pre & "
+			                </div>
+			                <div style='flex:1; border-left:1px solid " & BordeTarjeta & "; padding-left:16px;'>
+			                    <div style='color:" & ColorBaja & "; font-size:10px; font-weight:700; letter-spacing:0.05em; margin-bottom:6px;'>▼ MAYOR CAÍDA</div>
+			                    " & HTML_Pre_Cae & "
+			                </div>
+			            </div>
+			            <div style='color:" & TextoNota & "; font-size:9px; padding: 0 16px 10px 16px; font-style:italic;'>
+			                *Top 5 carreras con más de 50 alumnos. Variación anual.
+			            </div>
+			        </div>
+			
+			        <div class='tab-content content-post'>
+			            <div style='display:flex; gap:16px; flex-grow:1; padding: 0 16px 12px 16px;'>
+			                <div style='flex:1;'>
+			                    <div style='color:" & ColorSube & "; font-size:10px; font-weight:700; letter-spacing:0.05em; margin-bottom:6px;'>▲ MAYOR CRECIMIENTO</div>
+			                    " & HTML_Post & "
+			                </div>
+			                <div style='flex:1; border-left:1px solid " & BordeTarjeta & "; padding-left:16px;'>
+			                    <div style='color:" & ColorBaja & "; font-size:10px; font-weight:700; letter-spacing:0.05em; margin-bottom:6px;'>▼ MAYOR CAÍDA</div>
+			                    " & HTML_Post_Cae & "
+			                </div>
+			            </div>
+			            <div style='color:" & TextoNota & "; font-size:9px; padding: 0 16px 10px 16px; font-style:italic;'>
+			                *Top 5 programas con más de 10 alumnos. Incluye Maestrías, Doctorados y 2da Esp.
+			            </div>
+			        </div>
+			
+			    </div>
+			</div>
+			<style>
+			html,body{margin:0;height:100%; overflow: hidden;}
+			/* REDUJIMOS LA ALTURA MÍNIMA DE 380px A 310px */
+			.kw{height:100%;min-height:310px;box-sizing:border-box;font-family:'Segoe UI', Roboto, Arial, sans-serif;}
+			.kcr{display:none;}
+			.kcc{position:relative;height:100%;min-height:310px;box-sizing:border-box;border-radius:12px;display:flex;flex-direction:column;overflow:hidden;}
+			
+			.tab-btn {
+			    flex: 1;
+			    text-align: center;
+			    padding: 6px 0; /* Botones un poco más planos */
+			    font-size: 11px;
+			    font-weight: 600;
+			    cursor: pointer;
+			    border-radius: 6px;
+			    transition: all 0.2s ease;
+			    opacity: 0.6;
+			}
+			#tab_pre:checked ~ .kcc .tab-pre {
+			    background: " & Acento & ";
+			    color: #FFFFFF !important;
+			    opacity: 1;
+			    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+			}
+			#tab_post:checked ~ .kcc .tab-post {
+			    background: " & Acento & ";
+			    color: #FFFFFF !important;
+			    opacity: 1;
+			    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+			}
+			
+			.tab-content { display: none; flex-direction: column; flex-grow: 1; }
+			#tab_pre:checked ~ .kcc .content-pre { display: flex; }
+			#tab_post:checked ~ .kcc .content-post { display: flex; }
+			</style>
+			"
+			```
+		displayFolder: 01_Pag1_Arequipa_HTML
+		lineageTag: 77082d9f-d30e-4e94-ac9d-d9970742f0f5
+
+	measure HTML_KPI_Retencion = ```
+			
+			-- ===== 1. TEMA =====
+			VAR ModoSeleccionado = SELECTEDVALUE ( 'Theme_Switcher'[Mode], "Dark" )
+			VAR EsLight = ( ModoSeleccionado = "Light" )
+			
+			VAR FondoTarjeta    = IF ( EsLight, "#FFFFFF", "#152B54" )
+			VAR BordeTarjeta    = IF ( EsLight, "#E2E8F0", "#2A4B8D" )
+			VAR Acento          = IF ( EsLight, "#5C1531", "#C97F9E" )
+			VAR TextoPrincipal  = IF ( EsLight, "#0F172A", "#FFFFFF" )
+			VAR TextoSecundario = IF ( EsLight, "#475569", "#CBD5E1" )
+			VAR TextoNota       = IF ( EsLight, "#64748B", "#94A3B8" )
+			VAR ColorSube       = IF ( EsLight, "#059669", "#34D399" )
+			VAR ColorBaja       = IF ( EsLight, "#DC2626", "#F87171" )
+			VAR ColorLinea      = IF ( EsLight, "#94A3B8", "#6F86B8" )
+			
+			-- ===== 2. PARAMETROS =====
+			VAR CodUcsp      = "260000062"
+			VAR AnioActual   = CALCULATE ( MAX('dim_periodo'[ANIO]), REMOVEFILTERS('dim_periodo') )
+			VAR AnioAnterior = AnioActual - 1
+			
+			-- ===== 3. CÁLCULOS DEL AÑO ACTUAL =====
+			VAR TotalHoy = CALCULATE ( [Estudiantes Únicos], 'dim_universidad'[CODIGO_INEI] = CodUcsp, 'dim_periodo'[ANIO] = AnioActual )
+			VAR IngresantesHoy = CALCULATE ( [Total Ingresantes (Año)], 'dim_universidad'[CODIGO_INEI] = CodUcsp, 'dim_periodo'[ANIO] = AnioActual )
+			
+			-- Alumnos retenidos (Antiguos)
+			VAR RetenidosHoy = MAX(0, TotalHoy - IngresantesHoy)
+			VAR RatioHoy = DIVIDE ( RetenidosHoy, TotalHoy )
+			
+			-- ===== 4. CÁLCULOS DEL AÑO ANTERIOR (Para el YoY) =====
+			VAR TotalAnt = CALCULATE ( [Estudiantes Únicos], 'dim_universidad'[CODIGO_INEI] = CodUcsp, 'dim_periodo'[ANIO] = AnioAnterior )
+			VAR IngresantesAnt = CALCULATE ( [Total Ingresantes (Año)], 'dim_universidad'[CODIGO_INEI] = CodUcsp, 'dim_periodo'[ANIO] = AnioAnterior )
+			VAR RetenidosAnt = MAX(0, TotalAnt - IngresantesAnt)
+			
+			VAR Crecimiento = IF ( NOT ISBLANK(RetenidosAnt) && RetenidosAnt > 0, DIVIDE ( RetenidosHoy, RetenidosAnt ) - 1, BLANK() )
+			VAR Flecha = IF ( Crecimiento >= 0, "▲ ", "▼ " )
+			VAR ColorCrecimiento = IF ( Crecimiento >= 0, ColorSube, ColorBaja )
+			VAR SubTxt = IF( ISBLANK(Crecimiento), "Año base", "<span style='color:" & ColorCrecimiento & "; font-weight:700;'>" & Flecha & FORMAT( ABS(Crecimiento), "0.0%" ) & " VS " & AnioAnterior & "</span>" )
+			
+			VAR ValorTxt = FORMAT ( RetenidosHoy, "#,##0" )
+			VAR NotaFrente = "Representan el <b>" & FORMAT(RatioHoy, "0.0%") & "</b> de la comunidad."
+			
+			-- ===== 5. TEXTOS DEL TOOLTIP (Desglose Pre/Post) =====
+			-- Para calcular los retenidos de pregrado y postgrado, restamos los ingresantes totales de cada nivel
+			VAR TotalPre = CALCULATE ( [Estudiantes Únicos], 'dim_universidad'[CODIGO_INEI] = CodUcsp, 'dim_periodo'[ANIO] = AnioActual, 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL" )
+			VAR TotalPost = CALCULATE ( [Estudiantes Únicos], 'dim_universidad'[CODIGO_INEI] = CodUcsp, 'dim_periodo'[ANIO] = AnioActual, 'dim_programa'[NIVEL_ACADEMICO] IN { "MAESTRIA", "DOCTORADO", "SEGUNDA ESPECIALIDAD" } )
+			
+			-- Asumimos que casi todos los ingresantes son de pregrado (puedes ajustarlo si tienes datos de postgrado)
+			VAR RetenidosPre = MAX(0, TotalPre - IngresantesHoy)
+			VAR RetenidosPost = TotalPost -- En postgrado los ingresantes son mínimos, se asume que casi todos son antiguos
+			
+			VAR TextoDesglose = 
+			    "De los <b>" & FORMAT(RetenidosHoy, "#,##0") & "</b> alumnos retenidos:<br>" &
+			    "• <b>" & FORMAT(RetenidosPre, "#,##0") & "</b> son de Pregrado.<br>" &
+			    "• <b>" & FORMAT(RetenidosPost, "#,##0") & "</b> son de Postgrado.<br>" &
+			    "<span style='font-size:10px; color:" & TextoNota & "; margin-top:4px; display:block;'>Los alumnos retenidos son aquellos que ya cursaban en años anteriores.</span>"
+			
+			-- ===== 6. SPARKLINE (Evolución del Ratio de Retención) =====
+			VAR Serie = 
+			    ADDCOLUMNS (
+			        CALCULATETABLE ( VALUES ( 'dim_periodo'[ANIO] ), REMOVEFILTERS ( 'dim_periodo' ) ),
+			        "@Total", CALCULATE ( [Estudiantes Únicos], 'dim_universidad'[CODIGO_INEI] = CodUcsp ),
+			        "@Ing", CALCULATE ( [Total Ingresantes (Año)], 'dim_universidad'[CODIGO_INEI] = CodUcsp )
+			    )
+			VAR SerieRatio = 
+			    ADDCOLUMNS( 
+			        FILTER(Serie, NOT ISBLANK([@Total])),
+			        "@Ratio", DIVIDE ( MAX(0, [@Total] - [@Ing]), [@Total] ) * 100 
+			    )
+			
+			VAR MinAnio    = MINX ( SerieRatio, 'dim_periodo'[ANIO] )
+			VAR MaxAnio    = MAXX ( SerieRatio, 'dim_periodo'[ANIO] )
+			VAR RatioMin   = MINX ( SerieRatio, [@Ratio] ) - 2
+			VAR RatioMax   = MAXX ( SerieRatio, [@Ratio] ) + 2
+			VAR RangoRatio = RatioMax - RatioMin
+			
+			VAR SerieXY =
+			    ADDCOLUMNS (
+			        SerieRatio,
+			        "PX", 14 + DIVIDE ( 'dim_periodo'[ANIO] - MinAnio, MaxAnio - MinAnio, 0 ) * 132,
+			        "PY", 22 + ( 1 - DIVIDE ( [@Ratio] - RatioMin, RangoRatio, 0.5 ) ) * 26
+			    )
+			
+			VAR Puntos = CONCATENATEX ( SerieXY, FORMAT ( [PX], "0.0", "en-US" ) & "," & FORMAT ( [PY], "0.0", "en-US" ), " ", 'dim_periodo'[ANIO], ASC )
+			VAR Circulos = CONCATENATEX ( SerieXY, "<circle cx='" & FORMAT ( [PX], "0.0", "en-US" ) & "' cy='" & FORMAT ( [PY], "0.0", "en-US" ) & "' r='" & IF ( 'dim_periodo'[ANIO] = AnioActual, "4", "2.5" ) & "' fill='" & IF ( 'dim_periodo'[ANIO] = AnioActual, Acento, ColorLinea ) & "'/>", "", 'dim_periodo'[ANIO], ASC )
+			VAR EtiquetasAnio = CONCATENATEX ( SerieXY, "<text x='" & FORMAT ( [PX], "0.0", "en-US" ) & "' y='66' text-anchor='middle' font-size='10' font-weight='" & IF ( 'dim_periodo'[ANIO] = AnioActual, "700", "400" ) & "' fill='" & IF ( 'dim_periodo'[ANIO] = AnioActual, TextoPrincipal, TextoNota ) & "'>'" & RIGHT ( 'dim_periodo'[ANIO], 2 ) & "</text>", "", 'dim_periodo'[ANIO], ASC )
+			VAR EtiquetaValor = CONCATENATEX ( FILTER ( SerieXY, 'dim_periodo'[ANIO] = AnioActual ), "<text x='" & FORMAT ( [PX], "0.0", "en-US" ) & "' y='" & FORMAT ( [PY] - 8, "0.0", "en-US" ) & "' text-anchor='middle' font-size='10' font-weight='700' fill='" & Acento & "'>" & FORMAT ( [@Ratio], "0.0" ) & "%</text>" )
+			
+			VAR Sparkline = "<svg viewBox='0 0 160 70' width='100%' height='70' preserveAspectRatio='xMidYMid meet'>" & "<polyline points='" & Puntos & "' fill='none' stroke='" & ColorLinea & "' stroke-width='2' stroke-linejoin='round' stroke-linecap='round'/>" & Circulos & EtiquetaValor & EtiquetasAnio & "</svg>"
+			
+			RETURN
+			"
+			<div class='kw'>
+			<input type='checkbox' id='kf_ret' class='kcx'>
+			<label for='kf_ret' class='kcl' title='Clic para ver el desglose de retención'>
+			  <div class='kcc'>
+			    <!-- FRENTE -->
+			    <div class='kcf' style='background:" & FondoTarjeta & ";border:1px solid " & BordeTarjeta & ";border-left:5px solid " & Acento & ";'>
+			        <div class='kchd'>
+			            <span class='kct' style='color:" & TextoSecundario & ";'>Alumnos Retenidos · " & AnioActual & "</span>
+			            <span class='kci' style='border:1px solid " & Acento & ";color:" & Acento & ";'>i</span>
+			        </div>
+			        <div class='kcbody'>
+			            <div class='kcv' style='color:" & Acento & ";'>" & ValorTxt & "</div>
+			            <div class='kcs' style='color:" & TextoSecundario & ";'>" & SubTxt & "</div>
+			            <div class='kcft' style='color:" & TextoNota & ";'>" & NotaFrente & "</div>
+			        </div>
+			    </div>
+			    <!-- REVERSO -->
+			    <div class='kcb' style='background:" & FondoTarjeta & ";border:1px solid " & BordeTarjeta & ";border-left:5px solid " & Acento & ";'>
+			        <div class='kcbt' style='color:" & Acento & ";'>El Motor de la Comunidad</div>
+			        <div class='kcbx' style='color:" & TextoSecundario & ";'>
+			            <div style='margin-bottom:6px;'>" & TextoDesglose & "</div>
+			        </div>
+			        <div class='kcsp'>" & Sparkline & "</div>
+			        <div class='kcn' style='color:" & TextoNota & ";'>Evolución del % de alumnos que se mantienen.</div>
+			    </div>
+			  </div>
+			</label>
+			</div>
+			<style>
+			html,body{margin:0;height:100%;}
+			.kw{height:100%;min-height:190px;box-sizing:border-box;font-family:'Segoe UI', Roboto, Arial, sans-serif;}
+			.kcx{display:none;}
+			.kcl{display:block;height:100%;min-height:190px;cursor:pointer;}
+			.kcc{position:relative;height:100%;min-height:190px;}
+			
+			.kcf {position:relative; width:100%; min-height:190px; box-sizing:border-box; border-radius:12px; padding:16px 20px; overflow:hidden; display:flex; flex-direction:column; justify-content:space-between; transition:opacity .25s ease;}
+			.kcb {position:absolute; top:0; left:0; right:0; bottom:0; min-height:190px; box-sizing:border-box; border-radius:12px; padding:16px 20px; overflow:hidden; display:flex; flex-direction:column; opacity:0; pointer-events:none; transition:opacity .25s ease;}
+			
+			.kcx:checked ~ .kcl .kcf{opacity:0;pointer-events:none;}
+			.kcx:checked ~ .kcl .kcb{opacity:1;pointer-events:auto;}
+			
+			.kchd{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+			.kct{font-size:11px;line-height:1.3;font-weight:600;letter-spacing:.06em;text-transform:uppercase;}
+			.kci{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;font-size:11px;line-height:1;font-style:italic;font-weight:700;}
+			
+			.kcbody{display:flex;flex-direction:column;justify-content:center;flex-grow:1;margin-top:8px;}
+			.kcv{font-size:56px;line-height:1;font-weight:700;letter-spacing:-.03em;margin-bottom:6px;}
+			.kcs{font-size:13px;line-height:1.3;font-weight:600;}
+			.kcft{font-size:12px;line-height:1.3;margin-top:4px;}
+			
+			.kcbt{font-size:11px;line-height:1.3;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;}
+			.kcbx{font-size:12px;line-height:1.5;margin-bottom:8px;}
+			.kcsp{width:100%; margin-top:auto; margin-bottom:8px;}
+			.kcn{font-size:10px;line-height:1.3;font-style:italic;border-top:1px solid " & BordeTarjeta & "; padding-top:6px;}
+			</style>
+			"
+			```
+		displayFolder: 01_Pag1_Arequipa_HTML
+		lineageTag: 9fdaee1e-4e03-4307-b39c-a1e122f3d1cf
+
+	measure HTML_Insight_Ejecutivo = ```
+			
+			VAR ModoSeleccionado = SELECTEDVALUE ( 'Theme_Switcher'[Mode], "Dark" )
+			VAR EsLight = ( ModoSeleccionado = "Light" )
+			VAR FondoTarjeta    = IF ( EsLight, "#FFFFFF", "#152B54" )
+			VAR BordeTarjeta    = IF ( EsLight, "#E2E8F0", "#2A4B8D" )
+			VAR TextoPrincipal  = IF ( EsLight, "#0F172A", "#FFFFFF" )
+			VAR TextoSecundario = IF ( EsLight, "#475569", "#CBD5E1" )
+			VAR TextoNota       = IF ( EsLight, "#64748B", "#94A3B8" )
+			VAR ColorSube       = IF ( EsLight, "#059669", "#34D399" )
+			VAR ColorBaja       = IF ( EsLight, "#DC2626", "#F87171" )
+			VAR ColorAccion     = IF ( EsLight, "#3B82F6", "#60A5FA" ) 
+			
+			VAR CodUcsp      = "260000062"
+			VAR AnioActual   = CALCULATE ( MAX('dim_periodo'[ANIO]), REMOVEFILTERS('dim_periodo') )
+			VAR AnioAnterior = AnioActual - 1
+			
+			VAR ComHoy = CALCULATE ( [Estudiantes Únicos], 'dim_universidad'[CODIGO_INEI] = CodUcsp, 'dim_periodo'[ANIO] = AnioActual )
+			VAR ComAnt = CALCULATE ( [Estudiantes Únicos], 'dim_universidad'[CODIGO_INEI] = CodUcsp, 'dim_periodo'[ANIO] = AnioAnterior )
+			VAR ComCrec = DIVIDE(ComHoy, ComAnt) - 1
+			
+			VAR IngHoy = CALCULATE ( [Total Ingresantes (Año)], 'dim_universidad'[CODIGO_INEI] = CodUcsp, 'dim_periodo'[ANIO] = AnioActual )
+			VAR IngAnt = CALCULATE ( [Total Ingresantes (Año)], 'dim_universidad'[CODIGO_INEI] = CodUcsp, 'dim_periodo'[ANIO] = AnioAnterior )
+			VAR IngCrec = DIVIDE(IngHoy, IngAnt) - 1
+			
+			VAR RetHoy = MAX(0, ComHoy - IngHoy)
+			VAR RatioRet = DIVIDE(RetHoy, ComHoy)
+			
+			VAR MercadoHoy = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_periodo'[ANIO] = AnioActual, REMOVEFILTERS('dim_periodo'[SEMESTRE]) )
+			VAR UcspMatHoy = CALCULATE ( [Total Matrículas], 'dim_universidad'[CODIGO_INEI] = CodUcsp, 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_periodo'[ANIO] = AnioActual, REMOVEFILTERS('dim_periodo'[SEMESTRE]) )
+			VAR CuotaHoy = DIVIDE(UcspMatHoy, MercadoHoy)
+			
+			VAR MercadoAnt = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_periodo'[ANIO] = AnioAnterior, REMOVEFILTERS('dim_periodo'[SEMESTRE]) )
+			VAR UcspMatAnt = CALCULATE ( [Total Matrículas], 'dim_universidad'[CODIGO_INEI] = CodUcsp, 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_periodo'[ANIO] = AnioAnterior, REMOVEFILTERS('dim_periodo'[SEMESTRE]) )
+			VAR CuotaAnt = DIVIDE(UcspMatAnt, MercadoAnt)
+			VAR CuotaDeltaYoY = (CuotaHoy - CuotaAnt) * 100
+			
+			VAR MercadoCrec = DIVIDE(MercadoHoy, MercadoAnt) - 1
+			VAR UcspMatCrec = DIVIDE(UcspMatHoy, UcspMatAnt) - 1
+			
+			RETURN
+			"
+			<div class='kw'>
+			<input type='checkbox' id='kf_insight' class='kcx'>
+			<label for='kf_insight' class='kcl' title='Clic para ver diagnóstico'>
+			  <div class='kcc'>
+			    <div class='kcf' style='background:" & FondoTarjeta & "; border:1px solid " & BordeTarjeta & "; border-left:5px solid " & ColorAccion & ";'>
+			        <div style='color:" & TextoSecundario & "; font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; margin-bottom:10px;'>
+			            Resumen Ejecutivo · " & AnioActual & "
+			        </div>
+			        <div class='bloque' style='border-left:3px solid " & ColorSube & ";'>
+			            <div class='bloque-titulo' style='color:" & ColorSube & ";'>▲ Comunidad Sólida</div>
+			            <div class='bloque-texto' style='color:" & TextoPrincipal & ";'>
+			                Alcanzamos <b>" & FORMAT(ComHoy, "#,##0") & "</b> alumnos (" & FORMAT(ComCrec, "+0.0%;-0.0%") & "). La retención se mantiene en <b>" & FORMAT(RatioRet, "0.0%") & "</b>.
+			            </div>
+			        </div>
+			        <div class='bloque' style='border-left:3px solid " & ColorBaja & "; margin-bottom:0;'>
+			            <div class='bloque-titulo' style='color:" & ColorBaja & ";'>▼ Alerta en Captación</div>
+			            <div class='bloque-texto' style='color:" & TextoPrincipal & ";'>
+			                Los ingresantes cayeron a <b>" & FORMAT(IngHoy, "#,##0") & "</b> (" & FORMAT(IngCrec, "+0.0%;-0.0%") & "), arrastrando la cuota a <b>" & FORMAT(CuotaHoy, "0.0%") & "</b> (" & FORMAT(CuotaDeltaYoY, "+0.0;-0.0") & " pp).
+			            </div>
+			        </div>
+			    </div>
+			    
+			    <div class='kcb' style='background:" & FondoTarjeta & "; border:1px solid " & BordeTarjeta & "; border-left:5px solid " & ColorAccion & ";'>
+			        <div style='color:" & TextoSecundario & "; font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; margin-bottom:6px;'>
+			            Diagnóstico del Mercado
+			        </div>
+			        <div style='color:" & TextoPrincipal & "; font-size:12px; line-height:1.3;'>
+			            <b>El problema de la cuota:</b> Mientras el mercado de Arequipa creció un <b style='color:" & ColorSube & ";'>" & FORMAT(MercadoCrec, "0.0%") & "</b>, las matrículas de UCSP lo hicieron solo un <b style='color:" & ColorBaja & ";'>" & FORMAT(UcspMatCrec, "0.0%") & "</b>. 
+			            <br><br>
+			            Esta brecha de crecimiento es la que nos hace perder participación año tras año, a pesar de que nuestro volumen general se mantiene positivo.
+			        </div>
+			        <div style='color:" & TextoNota & "; font-size:9px; margin-top:auto; font-style:italic; border-top:1px solid " & BordeTarjeta & "; padding-top:4px;'>
+			            *Análisis comparativo " & AnioActual & " vs " & AnioAnterior & ". Fuente: TUNI.PE.
+			        </div>
+			    </div>
+			  </div>
+			</label>
+			</div>
+			<style>
+			html,body{margin:0;height:100%; overflow: hidden;}
+			.kw{height:100%;min-height:170px;box-sizing:border-box;font-family:'Segoe UI', Roboto, Arial, sans-serif;}
+			.kcx{display:none;}
+			.kcl{display:block;height:100%;min-height:170px;cursor:pointer; overflow: hidden;}
+			.kcc{position:relative;height:100%;min-height:170px; overflow: hidden;}
+			
+			/* Volvemos a la seguridad de flexbox y min-height */
+			.kcf {position:relative; width:100%; height:100%; min-height:170px; box-sizing:border-box; border-radius:12px; padding:14px 18px; overflow:hidden; display:flex; flex-direction:column; transition:opacity .25s ease;}
+			.kcb {position:absolute; top:0; left:0; right:0; bottom:0; min-height:170px; box-sizing:border-box; border-radius:12px; padding:14px 18px; overflow:hidden; display:flex; flex-direction:column; justify-content:flex-start; opacity:0; pointer-events:none; transition:opacity .25s ease;}
+			
+			.kcx:checked ~ .kcl .kcf{opacity:0;pointer-events:none;}
+			.kcx:checked ~ .kcl .kcb{opacity:1;pointer-events:auto;}
+			
+			.bloque { margin-bottom: 8px; padding-left: 10px; }
+			.bloque-titulo { font-size: 11px; font-weight: 700; margin-bottom: 1px; }
+			.bloque-texto { font-size: 12px; line-height: 1.3; }
+			</style>
+			"
+			```
+		displayFolder: 01_Pag1_Arequipa_HTML
+		lineageTag: 28b6fef5-6f88-4c16-a7c3-859afc1df8bb
+
+	measure HTML_P1_Conclusion =
+			VAR Modo = SELECTEDVALUE ( 'Theme_Switcher'[Mode], "Light" )
+			VAR EsLight = ( Modo = "Light" )
+			VAR FondoTarjeta = IF ( EsLight, "#FFFFFF", "#152B54" )
+			VAR BordeTarjeta = IF ( EsLight, "#E2E8F0", "#2A4B8D" )
+			VAR Acento = IF ( EsLight, "#5C1531", "#C97F9E" )
+			VAR TextoPrincipal = IF ( EsLight, "#0F172A", "#FFFFFF" )
+			VAR TextoSecundario = IF ( EsLight, "#475569", "#CBD5E1" )
+			VAR TextoNota = IF ( EsLight, "#64748B", "#94A3B8" )
+			VAR ColorBien = IF ( EsLight, "#059669", "#34D399" )
+			VAR ColorDist = "#F59E0B"
+			VAR C20 = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_periodo'[ANIO] = 2020 )
+			VAR C25 = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_periodo'[ANIO] = 2025 )
+			VAR M20 = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_periodo'[ANIO] = 2020, REMOVEFILTERS ( 'dim_universidad' ) )
+			VAR M25 = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_periodo'[ANIO] = 2025, REMOVEFILTERS ( 'dim_universidad' ) )
+			VAR Ucsp25 = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_periodo'[ANIO] = 2025, 'dim_universidad'[CODIGO_INEI] = "260000062" )
+			VAR Ucsp20 = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_periodo'[ANIO] = 2020, 'dim_universidad'[CODIGO_INEI] = "260000062" )
+			VAR Cuota20 = DIVIDE ( Ucsp20, M20 )
+			VAR Cuota25 = DIVIDE ( Ucsp25, M25 )
+			VAR CrecMercado = DIVIDE ( M25, M20 ) - 1
+			VAR UTP20 = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_periodo'[ANIO] = 2020, CONTAINSSTRING ( 'dim_universidad'[NOMBRE_ENTIDAD], "TECNOLOGICA DEL PERU" ) )
+			VAR UTP25 = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_periodo'[ANIO] = 2025, CONTAINSSTRING ( 'dim_universidad'[NOMBRE_ENTIDAD], "TECNOLOGICA DEL PERU" ) )
+			VAR CapturaUTP = DIVIDE ( UTP25 - UTP20, M25 - M20 )
+			VAR Pos = 1 + COUNTROWS ( FILTER ( ALL ( 'dim_universidad'[NOMBRE_ENTIDAD] ),
+			        CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_periodo'[ANIO] = 2025 ) > Ucsp25 ) )
+			RETURN
+			"<div class='cw'><input type='checkbox' id='cc_flip' class='cx'><label for='cc_flip' class='cl'><div class='cc'>" &
+			"<div class='cf' style='background:" & FondoTarjeta & ";border:1px solid " & BordeTarjeta & ";border-left:4px solid " & Acento & ";'>" &
+			"<div class='cq'><div class='clab' style='color:" & Acento & ";'>La pregunta</div>" &
+			"<div class='cqt' style='color:" & TextoPrincipal & ";'>¿En qué situación está UCSP entre 2020 y 2025?</div>" &
+			"<div class='chint' style='color:" & TextoNota & ";'>clic para ver la conclusión</div></div>" &
+			"<div class='cn' style='border-color:" & BordeTarjeta & ";'><div class='cnv' style='color:" & ColorDist & ";'>" & Pos & "°</div>" &
+			"<div class='cnl' style='color:" & TextoNota & ";'>en matrículas de Arequipa</div></div>" &
+			"</div>" &
+			"<div class='cb' style='background:" & FondoTarjeta & ";border:1px solid " & BordeTarjeta & ";border-left:4px solid " & Acento & ";'>" &
+			"<div class='ch'><span class='clab' style='color:" & Acento & ";'>La conclusión</span><span class='chint' style='margin:0;color:" & TextoNota & ";'>clic para volver</span></div>" &
+			"<div class='cgrid'>" &
+			"<div class='ci' style='color:" & TextoSecundario & ";'><span class='cnum' style='color:" & ColorBien & ";'>1</span>Crecimos <b>" & FORMAT ( DIVIDE ( Ucsp25, Ucsp20 ) - 1, "+0%;-0%" ) & "</b>: de " & FORMAT ( Ucsp20, "#,##0" ) & " a " & FORMAT ( Ucsp25, "#,##0" ) & " matrículas.</div>" &
+			"<div class='ci' style='color:" & TextoSecundario & ";'><span class='cnum' style='color:" & ColorDist & ";'>2</span>Pero perdimos cuota: <b>" & FORMAT ( Cuota20, "0.0%" ) & " → " & FORMAT ( Cuota25, "0.0%" ) & "</b>.</div>" &
+			"<div class='ci' style='color:" & TextoSecundario & ";'><span class='cnum' style='color:" & ColorDist & ";'>3</span>El mercado creció <b>" & FORMAT ( CrecMercado, "+0.0%;-0.0%" ) & "</b>; UTP se llevó <b>" & FORMAT ( CapturaUTP, "0.0%" ) & "</b>.</div>" &
+			"<div class='ci' style='color:" & TextoSecundario & ";'><span class='cnum' style='color:" & ColorDist & ";'>4</span><b>0% virtual</b> en pregrado: competimos donde el mercado no crece.</div>" &
+			"</div>" &
+			"<div class='chint' style='color:" & TextoNota & ";margin:0;'>Crecimos en volumen dentro del único segmento que se estancó. Ese es el diagnóstico.</div>" &
+			"</div>" &
+			"</div></label></div>" & "<style>.cw{height:100%;min-height:150px;box-sizing:border-box;font-family:Segoe UI,Roboto,Arial,sans-serif;}.cx{display:none;}.cl{display:block;height:100%;min-height:150px;cursor:pointer;}.cc{position:relative;height:100%;min-height:150px;}.cf,.cb{position:absolute;top:0;left:0;right:0;bottom:0;min-height:150px;box-sizing:border-box;border-radius:12px;padding:14px 18px;overflow:hidden;transition:opacity .25s;}.cb{opacity:0;pointer-events:none;}.cx:checked ~ .cl .cf{opacity:0;pointer-events:none;}.cx:checked ~ .cl .cb{opacity:1;pointer-events:auto;}.cf{display:flex;align-items:center;gap:20px;}.cq{flex:1;min-width:0;}.clab{font-size:8.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;}.cqt{font-size:15px;font-weight:700;line-height:1.25;margin-top:4px;}.chint{font-size:9.5px;font-style:italic;margin-top:6px;}.cn{flex:none;text-align:right;border-left:1px solid;padding-left:20px;}.cnv{font-size:44px;font-weight:800;line-height:1;letter-spacing:-.03em;}.cnl{font-size:9px;font-weight:600;line-height:1.2;margin-top:3px;max-width:110px;}.cb{display:flex;flex-direction:column;justify-content:space-between;}.ch{display:flex;justify-content:space-between;align-items:baseline;gap:10px;}.cgrid{display:grid;grid-template-columns:1fr 1fr;gap:7px 18px;margin:8px 0;}.ci{font-size:10px;line-height:1.35;padding-left:16px;position:relative;}.cnum{position:absolute;left:0;top:0;font-weight:800;font-size:10px;}</style>"
+		lineageTag: 0e122321-1ca7-47c0-996d-6728cbb4fd36
+
+	column Column
+		formatString: 0
+		lineageTag: f2b3f73a-7128-4d1e-8f73-0a0ed504c0cf
+		summarizeBy: sum
+		isNameInferred
+		sourceColumn: [Column]
+
+		annotation SummarizationSetBy = Automatic
+
+	partition HTML_KPI_Programas_Riesgo = calculated
+		mode: import
+		source = Row("Column", BLANK())
+
+	annotation PBI_Id = db65a93becd14414b75bee1f2f45e5ae
+
+	annotation 436ba87b-9c83-4389-a31b-ebd06a36be98 = {"Expression":""}

@@ -1,0 +1,49 @@
+table fact_alumnos
+	lineageTag: 85f6d69c-1d90-4d10-845d-73e3eaa25952
+
+	column SK_Alumno
+		dataType: int64
+		formatString: 0
+		lineageTag: df359ee3-503f-4bca-93dc-fd16e5f82495
+		summarizeBy: none
+		sourceColumn: SK_Alumno
+
+		annotation SummarizationSetBy = Automatic
+
+	column FK_Universidad
+		dataType: int64
+		formatString: 0
+		lineageTag: 0ada13c8-f698-425b-ab7a-611260b3f2a5
+		summarizeBy: sum
+		sourceColumn: FK_Universidad
+
+		annotation SummarizationSetBy = Automatic
+
+	column FK_Programa
+		dataType: int64
+		formatString: 0
+		lineageTag: da9a6b64-fbe9-45a7-a5cc-b14345d9c8dd
+		summarizeBy: sum
+		sourceColumn: FK_Programa
+
+		annotation SummarizationSetBy = Automatic
+
+	column FK_Periodo
+		dataType: int64
+		formatString: 0
+		lineageTag: 600d57da-5f9e-4df2-914c-211f15b85c76
+		summarizeBy: sum
+		sourceColumn: FK_Periodo
+
+		annotation SummarizationSetBy = Automatic
+
+	partition fact_alumnos = m
+		mode: import
+		source =
+				let
+				    Origen = Parquet.Document(File.Contents("D:\Proyectos\A.Prueba Tecnica UCSP\data\Dashboard_parquet\fact_alumnos.parquet"), [Compression=null, LegacyColumnNameEncoding=false, MaxDepth=null])
+				in
+				    Origen
+
+	annotation PBI_ResultType = Table
+

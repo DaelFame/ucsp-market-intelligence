@@ -1,0 +1,39 @@
+# Entornos virtuales
+.venv/
+venv/
+ENV/
+docs/
+# Archivos de caché de Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Variables de entorno (claves y contraseñas)
+.env
+
+# Archivos temporales de Jupyter Notebooks
+.ipynb_checkpoints/
+
+# Configuración de editores
+.vscode/
+.idea/
+
+# Carpetas de datos pesados (opcional: ignóralas si tienes datasets pesados)
+data/
+# Local Power BI artifacts
+dashboard/*.pbix
+dashboard/**/*.pbix
+
+# Power BI TMDL backups
+**/Medidas.tmdl.bak*
+
+# Power BI local cache (regenerable, ~87 MB)
+**/.pbi/cache.abf
+
+# Notas personales y artefactos de proceso (no publicar)
+apuntes.md
+.atl/
+constitution/
+
+# Power BI local machine bindings
+**/.pbi/localSettings.json

@@ -1,0 +1,722 @@
+table Medidas
+	isHidden
+	lineageTag: 93a44533-bb43-4af5-8631-e62463f9a0dd
+
+	measure 'Total Ingresantes' = SUM('fact_ingresantes_dashboard'[Conteo_Ingresantes])
+		displayFolder: 00_Base
+		lineageTag: c86e6ff2-ec82-4989-9e48-9dc554ed069f
+
+	measure 'Total Matriculados' = SUM('fact_matriculados_dashboard'[Conteo_Matriculados])
+		displayFolder: 00_Base
+		lineageTag: b458bcff-0132-4a4f-be53-e6960911a9e3
+
+	measure 'Total Ingresantes UCSP' = CALCULATE([Total Ingresantes (Año)], 'dim_universidad'[CODIGO_INEI] = "260000062")
+		displayFolder: 00_Base
+		lineageTag: 6332aae8-c18d-48b7-b010-39bf2d5950d9
+
+	measure 'Ingresantes Año Anterior' =
+			VAR AnioActual =
+			    SELECTEDVALUE ( 'dim_periodo'[ANIO] )
+			RETURN
+			    IF (
+			        ISBLANK ( AnioActual ),
+			        BLANK (),
+			        CALCULATE (
+			            [Total Ingresantes (Año)],
+			            REMOVEFILTERS ( 'dim_periodo' ),
+			            'dim_periodo'[ANIO] = AnioActual - 1
+			        )
+			    )
+		displayFolder: 01_Pag1_Arequipa
+		lineageTag: 76ced153-857c-41f2-99f1-7ebd8261c6ce
+
+	measure 'Total Matriculados Semestre Anterior' =
+			VAR AnioActual =
+			    SELECTEDVALUE ( 'dim_periodo'[ANIO] )
+			VAR SemestreActual =
+			    SELECTEDVALUE ( 'dim_periodo'[SEMESTRE] )
+			VAR AnioAnterior =
+			    IF ( SemestreActual = 1, AnioActual - 1, AnioActual )
+			VAR SemestreAnterior =
+			    IF ( SemestreActual = 1, 2, 1 )
+			RETURN
+			    IF (
+			        ISBLANK ( AnioActual ) || ISBLANK ( SemestreActual ),
+			        BLANK (),
+			        CALCULATE (
+			            [Total Matriculados],
+			            REMOVEFILTERS ( 'dim_periodo' ),
+			            'dim_periodo'[ANIO] = AnioAnterior,
+			            'dim_periodo'[SEMESTRE] = SemestreAnterior
+			        )
+			    )
+		displayFolder: 01_Pag1_Arequipa
+		lineageTag: 61b39c5c-e6ed-4f95-b95e-97437db94200
+
+	measure 'Total Ingresantes (Año)' = CALCULATE([Total Ingresantes], REMOVEFILTERS('dim_periodo'[SEMESTRE]))
+		displayFolder: 00_Base
+		lineageTag: f2b56aba-56c2-4b8a-9b95-0f5e738703ab
+
+	measure 'Total Matrículas' = SUM('fact_matriculados_dashboard'[Conteo_Matriculados])
+		displayFolder: 00_Base
+		lineageTag: 91b7eb1a-90e0-4447-9f01-7a68f8664d31
+
+	measure 'Total Matrículas UCSP' =
+			CALCULATE (
+			    [Total Matrículas],
+			    KEEPFILTERS ( 'dim_universidad'[CODIGO_INEI] = "260000062" )
+			)
+		displayFolder: 00_Base
+		lineageTag: 7f349d86-c331-48ec-9380-4c71ffa0130c
+
+	measure 'Total Matrículas Mercado' =
+			CALCULATE(
+				[Total Matrículas],
+				ALLSELECTED('dim_universidad'[NOMBRE_ENTIDAD])
+			)
+		displayFolder: 00_Base
+		lineageTag: c8b7ed2d-f95f-4b41-8faa-89ed81db8b79
+
+	measure 'Market Share Matrículas' = DIVIDE([Total Matrículas UCSP], [Total Matrículas Mercado])
+		formatString: 0.0\ %;-0.0\ %;0.0\ %
+		displayFolder: 01_Pag1_Arequipa
+		lineageTag: 8d1d4844-1dfb-445e-9a2f-dd9398b12a00
+
+	measure 'Posición UCSP Matrículas' =
+			VAR Universo =
+			    ALLSELECTED ( 'dim_universidad'[NOMBRE_ENTIDAD] )
+			VAR ValorUCSP =
+			    CALCULATE (
+			        [Total Matrículas],
+			        KEEPFILTERS ( 'dim_universidad'[CODIGO_INEI] = "260000062" )
+			    )
+			RETURN
+			    IF (
+			        ISBLANK ( ValorUCSP ),
+			        BLANK (),
+			        RANKX ( Universo, [Total Matrículas], ValorUCSP, DESC, DENSE )
+			    )
+		displayFolder: 01_Pag1_Arequipa
+		lineageTag: 7e934465-b78e-4d0b-82cc-de0991ffcce9
+
+	measure 'Total Universidades' =
+			CALCULATE(
+				DISTINCTCOUNT('dim_universidad'[NOMBRE_ENTIDAD]),
+				ALLSELECTED('dim_universidad'[NOMBRE_ENTIDAD])
+			)
+		displayFolder: 00_Base
+		lineageTag: 0add6813-3502-4d69-b3ee-bd16e1e9b2f0
+
+	measure 'Universidad Líder Matrículas' =
+			MAXX(
+				TOPN(1, ALLSELECTED('dim_universidad'[NOMBRE_ENTIDAD]), [Total Matrículas]),
+				'dim_universidad'[NOMBRE_ENTIDAD]
+			)
+		displayFolder: 01_Pag1_Arequipa
+		lineageTag: 143e432c-5970-4d1a-be9b-83a1062d1656
+
+	measure 'Matrículas Líder' =
+			MAXX(
+				TOPN(1, ALLSELECTED('dim_universidad'[NOMBRE_ENTIDAD]), [Total Matrículas]),
+				[Total Matrículas]
+			)
+		displayFolder: 01_Pag1_Arequipa
+		lineageTag: 2591c522-702b-4562-bee7-b317e55dab3e
+
+	measure 'Brecha Matrículas vs Líder' = [Total Matrículas UCSP] - [Matrículas Líder]
+		displayFolder: 01_Pag1_Arequipa
+		lineageTag: 769f8cae-bd26-46ef-b312-58604bb77998
+
+	measure 'Total Ingresantes Mercado' =
+			CALCULATE(
+				[Total Ingresantes (Año)],
+				ALLSELECTED('dim_universidad'[NOMBRE_ENTIDAD])
+			)
+		displayFolder: 00_Base
+		lineageTag: b12822b2-7876-4257-a096-08995d3a5a19
+
+	measure 'Promedio Matrículas Mercado' =
+			
+			DIVIDE(
+			    [Total Matrículas Mercado],
+			    [Total Universidades]
+			)
+		displayFolder: 02_Pag2_Regional
+		lineageTag: 42012bfe-a1db-4235-b258-a9e94ebdced5
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'Promedio Ingresantes Mercado' =
+			
+			DIVIDE(
+			    [Total Ingresantes Mercado],
+			    [Total Universidades]
+			)
+		displayFolder: 02_Pag2_Regional
+		lineageTag: c388a8af-da70-491a-8627-3b6fda70b572
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'Semestres por Año' =
+			VAR SemestresVisibles =
+			    CALCULATE (
+			        COUNTROWS ( 'dim_periodo' ),
+			        'dim_periodo'[TIPO_PERIODO] = "SEMESTRAL"
+			    )
+			VAR AniosVisibles =
+			    COUNTROWS ( VALUES ( 'dim_periodo'[ANIO] ) )
+			RETURN
+			    IF (
+			        SemestresVisibles = 0 || AniosVisibles = 0,
+			        BLANK (),
+			        DIVIDE ( SemestresVisibles, AniosVisibles )
+			    )
+		formatString: 0
+		displayFolder: 02_Pag2_Regional
+		lineageTag: acb438bf-391f-4489-95ef-1d748d5235f1
+
+	measure 'Matrículas Promedio Semestral' = DIVIDE ( [Total Matrículas], [Semestres por Año] )
+		formatString: #,##0
+		displayFolder: 01_Pag1_Arequipa
+		lineageTag: 40e01bb7-27de-4cd1-998e-48cb49c12aa8
+
+	measure 'Matrículas Promedio Semestral Año Anterior' =
+			VAR AnioActual =
+			    SELECTEDVALUE ( 'dim_periodo'[ANIO] )
+			VAR UnSoloSemestre =
+			    HASONEVALUE ( 'dim_periodo'[SEMESTRE] )
+			VAR SemestreActual =
+			    SELECTEDVALUE ( 'dim_periodo'[SEMESTRE] )
+			RETURN
+			    IF (
+			        ISBLANK ( AnioActual ),
+			        BLANK (),
+			        IF (
+			            UnSoloSemestre,
+			            CALCULATE (
+			                [Total Matrículas],
+			                REMOVEFILTERS ( 'dim_periodo' ),
+			                'dim_periodo'[ANIO] = AnioActual - 1,
+			                'dim_periodo'[SEMESTRE] = SemestreActual
+			            ),
+			            CALCULATE (
+			                [Matrículas Promedio Semestral],
+			                REMOVEFILTERS ( 'dim_periodo' ),
+			                'dim_periodo'[ANIO] = AnioActual - 1
+			            )
+			        )
+			    )
+		formatString: #,##0
+		displayFolder: 02_Pag2_Regional
+		lineageTag: 3bbeb342-59a0-4e7c-977d-8b43a2e152f0
+
+	measure 'Estudiantes Únicos' = DISTINCTCOUNT ( 'fact_alumnos'[SK_Alumno] )
+		formatString: #,##0
+		displayFolder: 00_Base
+		lineageTag: e6b9568d-259d-4f91-bd3f-e2d4840e6e26
+
+	/// Cuota de UCSP sobre el mercado de Arequipa, independiente del filtro de zona.
+	measure 'Cuota UCSP Arequipa (Año)' =
+			VAR AnioMax = CALCULATE ( MAX ( 'dim_periodo'[ANIO] ), ALL ( 'dim_periodo' ) )
+			RETURN
+			    CALCULATE (
+			        [Market Share Matrículas],
+			        ALL ( 'dim_ubicacion' ),
+			        ALL ( Dim_Zona ),
+			        ALL ( 'dim_periodo' ),
+			        'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA",
+			        'dim_periodo'[ANIO] = AnioMax
+			    )
+		formatString: 0.0%
+		isHidden
+		displayFolder: 01_Pag1_Arequipa
+		lineageTag: 17bc4c0d-ae29-42ea-b810-f23dc35600db
+
+	/// Línea base: cuota de UCSP en Arequipa en 2020.
+	measure 'Cuota UCSP Arequipa 2020' =
+			CALCULATE (
+			    [Market Share Matrículas],
+			    ALL ( 'dim_ubicacion' ),
+			    ALL ( Dim_Zona ),
+			    ALL ( 'dim_periodo' ),
+			    'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA",
+			    'dim_periodo'[ANIO] = 2020
+			)
+		formatString: 0.0%
+		isHidden
+		displayFolder: 01_Pag1_Arequipa
+		lineageTag: 536d5eef-d051-4363-95b5-c8e7015eab15
+
+	/// Diferencia en puntos porcentuales entre la cuota actual y la de 2020 en Arequipa.
+	measure 'Delta Cuota vs 2020 (pp)' =
+			VAR Actual = [Cuota UCSP Arequipa (Año)]
+			VAR Base = [Cuota UCSP Arequipa 2020]
+			RETURN
+			    IF ( NOT ISBLANK ( Actual ) && NOT ISBLANK ( Base ), ( Actual - Base ) * 100 )
+		formatString: +0.0;-0.0;0.0
+		displayFolder: 01_Pag1_Arequipa
+		lineageTag: b31080d9-123e-4af1-b1e1-7043fab5a017
+
+	/// Posición del área académica dentro del contexto filtrado (página).
+	measure 'Cuota UCSP por Zona' =
+			VAR Ucsp = CALCULATE ( [Total Matrículas], 'dim_universidad'[CODIGO_INEI] = "260000062" )
+			VAR Mercado = [Total Matrículas]
+			RETURN
+			    IF ( NOT ISBLANK ( Ucsp ), DIVIDE ( Ucsp, Mercado ), BLANK () )
+		formatString: 0.0%
+		displayFolder: 02_Pag2_Regional
+		lineageTag: 6f220a90-0762-40c7-8e3b-7e899473b1e1
+
+	/// Resumen textual por zona: total de mercado y cuota UCSP. Para tarjeta HTML.
+	measure HTML_Pag2_Oportunidad =
+			VAR Modo = SELECTEDVALUE ( 'Theme_Switcher'[Mode], "Light" )
+			VAR EsLight = ( Modo = "Light" )
+			VAR FondoTarjeta = IF ( EsLight, "#FFFFFF", "#1E293B" )
+			VAR BordeTarjeta = IF ( EsLight, "#E2E8F0", "#334155" )
+			VAR Acento = IF ( EsLight, "#5C1531", "#C97F9E" )
+			VAR Barra = IF ( EsLight, "#6A1B3D", "#C97F9E" )
+			VAR BarraFondo = IF ( EsLight, "#E2E8F0", "#273449" )
+			VAR TextoPrincipal = IF ( EsLight, "#0F172A", "#F1F5F9" )
+			VAR TextoSecundario = IF ( EsLight, "#475569", "#CBD5E1" )
+			VAR TextoNota = IF ( EsLight, "#64748B", "#94A3B8" )
+			VAR ColorAlerta = "#F59E0B"
+			VAR V1 = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_periodo'[ANIO] = 2025, 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_programa'[NOMBRE_PROGRAMA] = "ENFERMERIA" )
+			VAR V2 = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_periodo'[ANIO] = 2025, 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_programa'[NOMBRE_PROGRAMA] = "INGENIERIA DE MINAS" )
+			VAR V3 = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_periodo'[ANIO] = 2025, 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_programa'[NOMBRE_PROGRAMA] = "INGENIERIA MECANICA" )
+			VAR V4 = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_periodo'[ANIO] = 2025, 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_programa'[NOMBRE_PROGRAMA] = "INGENIERIA DE SISTEMAS E INFORMATICA" )
+			VAR N1 = DIVIDE ( CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_periodo'[ANIO] = 2025, 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_programa'[NOMBRE_PROGRAMA] = "ENFERMERIA", 'dim_programa'[ES_VIRTUAL] = TRUE ), V1 )
+			VAR N2 = DIVIDE ( CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_periodo'[ANIO] = 2025, 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_programa'[NOMBRE_PROGRAMA] = "INGENIERIA DE MINAS", 'dim_programa'[ES_VIRTUAL] = TRUE ), V2 )
+			VAR N3 = DIVIDE ( CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_periodo'[ANIO] = 2025, 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_programa'[NOMBRE_PROGRAMA] = "INGENIERIA MECANICA", 'dim_programa'[ES_VIRTUAL] = TRUE ), V3 )
+			VAR N4 = DIVIDE ( CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_periodo'[ANIO] = 2025, 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_programa'[NOMBRE_PROGRAMA] = "INGENIERIA DE SISTEMAS E INFORMATICA", 'dim_programa'[ES_VIRTUAL] = TRUE ), V4 )
+			VAR Total = V1 + V2 + V3 + V4
+			VAR MaxV = MAX ( MAX ( V1, V2 ), MAX ( V3, V4 ) )
+			VAR W1 = FORMAT ( DIVIDE ( V1, MaxV ) * 100, "0" )
+			VAR W2 = FORMAT ( DIVIDE ( V2, MaxV ) * 100, "0" )
+			VAR W3 = FORMAT ( DIVIDE ( V3, MaxV ) * 100, "0" )
+			VAR W4 = FORMAT ( DIVIDE ( V4, MaxV ) * 100, "0" )
+			RETURN
+			"<div class='cbw'><div class='cbc' style='background:" & FondoTarjeta & ";border:1px solid " & BordeTarjeta & ";border-left:3px solid " & ColorAlerta & ";'>" &
+			"<div class='cbh'><span class='cbt' style='color:" & TextoSecundario & ";'>Lo que el mercado pide y UCSP no ofrece</span><span class='cbn' style='color:" & ColorAlerta & ";'>Arequipa 2025 · " & FORMAT ( Total, "#,##0" ) & "</span></div>" &
+			"<div class='cbr'><span class='cbl' style='color:" & TextoPrincipal & ";'>Enfermería</span><div class='cbbg' style='background:" & BarraFondo & ";'><div class='cbb' style='width:" & W1 & "%;background:" & ColorAlerta & ";'></div></div><span class='cbv' style='color:" & TextoPrincipal & ";'>" & FORMAT ( V1, "#,##0" ) & "</span><span class='cbs' style='color:" & TextoNota & ";'>" & FORMAT ( N1, "0%" ) & "</span></div>" &
+			"<div class='cbr'><span class='cbl' style='color:" & TextoPrincipal & ";'>Ing. Minas</span><div class='cbbg' style='background:" & BarraFondo & ";'><div class='cbb' style='width:" & W2 & "%;background:" & Barra & ";'></div></div><span class='cbv' style='color:" & TextoPrincipal & ";'>" & FORMAT ( V2, "#,##0" ) & "</span><span class='cbs' style='color:" & TextoNota & ";'>" & FORMAT ( N2, "0%" ) & "</span></div>" &
+			"<div class='cbr'><span class='cbl' style='color:" & TextoPrincipal & ";'>Ing. Mecánica</span><div class='cbbg' style='background:" & BarraFondo & ";'><div class='cbb' style='width:" & W3 & "%;background:" & Barra & ";'></div></div><span class='cbv' style='color:" & TextoPrincipal & ";'>" & FORMAT ( V3, "#,##0" ) & "</span><span class='cbs' style='color:" & TextoNota & ";'>" & FORMAT ( N3, "0%" ) & "</span></div>" &
+			"<div class='cbr'><span class='cbl' style='color:" & TextoPrincipal & ";'>Ing. Sistemas</span><div class='cbbg' style='background:" & BarraFondo & ";'><div class='cbb' style='width:" & W4 & "%;background:" & Barra & ";'></div></div><span class='cbv' style='color:" & TextoPrincipal & ";'>" & FORMAT ( V4, "#,##0" ) & "</span><span class='cbs' style='color:" & TextoNota & ";'>" & FORMAT ( N4, "0%" ) & "</span></div>" &
+			"<div style='color:" & TextoNota & ";font-size:8px;margin-top:2px;'>Matrículas 2025 · % no presencial. Enfermería en el Sur: 16.524.</div>" &
+			"</div></div>" & "<style>.cbw{height:100%;min-height:170px;box-sizing:border-box;}.cbc{width:100%;height:100%;min-height:170px;box-sizing:border-box;border-radius:12px;padding:14px 18px;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;font-family:Segoe UI,Roboto,Arial,sans-serif;}.cbh{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:8px;}.cbt{font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}.cbn{font-size:9px;font-style:italic;white-space:nowrap;}.cbr{display:flex;align-items:center;gap:8px;margin-bottom:7px;}.cbl{font-size:10px;font-weight:600;white-space:nowrap;width:96px;}.cbbg{flex:1;height:7px;border-radius:4px;overflow:hidden;}.cbb{height:7px;border-radius:4px;}.cbv{font-size:12px;font-weight:800;text-align:right;width:46px;}.cbs{font-size:9px;text-align:right;white-space:nowrap;width:38px;}</style>"
+		displayFolder: UI_HTML_Components\Pag2
+		lineageTag: e56b7a43-6f82-4501-b1c8-f2ec51ea91f2
+
+	/// Tarjeta Insight: recomendación de expansión.
+	measure HTML_PAG2_PorQueSaturado =
+			VAR Modo = SELECTEDVALUE ( 'Theme_Switcher'[Mode], "Light" )
+			VAR EsLight = ( Modo = "Light" )
+			VAR FondoTarjeta = IF ( EsLight, "#FFFFFF", "#1E293B" )
+			VAR BordeTarjeta = IF ( EsLight, "#E2E8F0", "#334155" )
+			VAR Acento = IF ( EsLight, "#5C1531", "#C97F9E" )
+			VAR TextoPrincipal = IF ( EsLight, "#0F172A", "#F1F5F9" )
+			VAR TextoSecundario = IF ( EsLight, "#475569", "#CBD5E1" )
+			VAR TextoNota = IF ( EsLight, "#64748B", "#94A3B8" )
+			VAR ColorAlerta = "#F59E0B"
+			VAR M20 = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_periodo'[ANIO] = 2020 )
+			VAR M25 = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_periodo'[ANIO] = 2025 )
+			VAR U20 = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_periodo'[ANIO] = 2020, CONTAINSSTRING ( 'dim_universidad'[NOMBRE_ENTIDAD], "TECNOLOGICA DEL PERU" ) )
+			VAR U25 = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_periodo'[ANIO] = 2025, CONTAINSSTRING ( 'dim_universidad'[NOMBRE_ENTIDAD], "TECNOLOGICA DEL PERU" ) )
+			VAR C20 = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_periodo'[ANIO] = 2020, 'dim_universidad'[CODIGO_INEI] = "260000062" )
+			VAR C25 = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_periodo'[ANIO] = 2025, 'dim_universidad'[CODIGO_INEI] = "260000062" )
+			VAR R20 = CALCULATE ( [Total Matrículas], Dim_Zona[ZONA] = "Sur", 'dim_ubicacion'[DEPARTAMENTO] <> "AREQUIPA", 'dim_periodo'[ANIO] = 2020 )
+			VAR R25 = CALCULATE ( [Total Matrículas], Dim_Zona[ZONA] = "Sur", 'dim_ubicacion'[DEPARTAMENTO] <> "AREQUIPA", 'dim_periodo'[ANIO] = 2025 )
+			VAR Captura = DIVIDE ( U25 - U20, M25 - M20 )
+			VAR CuotaUcsp25 = DIVIDE ( C25, M25 )
+			VAR CuotaUcsp20 = DIVIDE ( C20, M20 )
+			VAR DeltaUcsp = ( CuotaUcsp25 - CuotaUcsp20 ) * 100
+			VAR CrecAqp = DIVIDE ( M25, M20 ) - 1
+			VAR CrecRSur = DIVIDE ( R25, R20 ) - 1
+			RETURN
+			"<div class='sw'><input type='checkbox' id='kf_sat' class='sx'><label for='kf_sat' class='sl'><div class='sc'>" &
+			"<div class='sf' style='background:" & FondoTarjeta & ";border:1px solid " & BordeTarjeta & ";border-left:4px solid " & ColorAlerta & ";'>" &
+			"<div class='sh'><span class='st' style='color:" & TextoSecundario & ";'>¿Por qué el Sur ya no es el negocio?</span><span class='sn' style='color:" & TextoNota & ";'>clic para el detalle</span></div>" &
+			"<div><div class='sv' style='color:" & ColorAlerta & ";'>" & FORMAT ( Captura, "0.0%" ) & "</div>" &
+			"<div class='ss' style='color:" & TextoSecundario & ";'>del crecimiento de Arequipa (2020-25) lo capturó UTP</div></div>" &
+			"<div class='st3' style='border-color:" & BordeTarjeta & ";'>" &
+			"<div class='si'><div class='sil' style='color:" & TextoNota & ";'>Mercado Aqp</div><div class='siv' style='color:" & TextoPrincipal & ";'>" & FORMAT ( CrecAqp, "+0.0%;-0.0%" ) & "</div></div>" &
+			"<div class='si'><div class='sil' style='color:" & TextoNota & ";'>Cuota UCSP</div><div class='siv' style='color:" & ColorAlerta & ";'>" & FORMAT ( CuotaUcsp25, "0.0%" ) & "</div><div class='sii' style='color:" & TextoNota & ";'>" & FORMAT ( DeltaUcsp, "+0.0;-0.0" ) & " pp</div></div>" &
+			"<div class='si'><div class='sil' style='color:" & TextoNota & ";'>Resto del Sur</div><div class='siv' style='color:" & TextoSecundario & ";'>" & FORMAT ( CrecRSur, "+0.0%;-0.0%" ) & "</div></div>" &
+			"</div></div>" &
+			"<div class='sb' style='background:" & FondoTarjeta & ";border:1px solid " & BordeTarjeta & ";border-left:4px solid " & ColorAlerta & ";'>" &
+			"<div class='sh'><span class='st' style='color:" & ColorAlerta & ";'>El diagnóstico</span><span class='sn' style='color:" & TextoNota & ";'>clic para volver</span></div>" &
+			"<div style='color:" & TextoPrincipal & ";font-size:11px;line-height:1.5;margin-top:8px;'>Arequipa creció <b>" & FORMAT ( CrecAqp, "+0.0%;-0.0%" ) & "</b>, pero UCSP bajó de <b>" & FORMAT ( CuotaUcsp20, "0.0%" ) & " a " & FORMAT ( CuotaUcsp25, "0.0%" ) & "</b> de cuota mientras UTP llegó a <b>32,3%</b>. El resto del Sur creció solo <b>" & FORMAT ( CrecRSur, "+0.0%;-0.0%" ) & "</b>.</div>" &
+			"<div style='color:" & TextoSecundario & ";font-size:10px;line-height:1.4;margin-top:6px;'>No falta mercado: falta espacio. El Sur es cuota para defender, no para conquistar.</div>" &
+			"</div>" &
+			"</div></label></div>" & "<style>.sw{height:100%;min-height:170px;box-sizing:border-box;font-family:Segoe UI,Roboto,Arial,sans-serif;}.sx{display:none;}.sl{display:block;height:100%;min-height:170px;cursor:pointer;}.sc{position:relative;height:100%;min-height:170px;}.sf{position:relative;width:100%;height:100%;min-height:170px;box-sizing:border-box;border-radius:12px;padding:16px 20px;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;transition:opacity .25s;}.sb{position:absolute;top:0;left:0;right:0;bottom:0;min-height:170px;box-sizing:border-box;border-radius:12px;padding:16px 20px;overflow:hidden;display:flex;flex-direction:column;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s;}.sx:checked ~ .sl .sf{opacity:0;pointer-events:none;}.sx:checked ~ .sl .sb{opacity:1;pointer-events:auto;}.sh{display:flex;justify-content:space-between;align-items:baseline;gap:10px;}.st{font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}.sn{font-size:9px;font-style:italic;white-space:nowrap;}.sv{font-size:46px;font-weight:800;line-height:1;letter-spacing:-.02em;}.ss{font-size:11px;line-height:1.3;margin-top:2px;}.st3{display:flex;gap:14px;margin-top:10px;border-top:1px solid;padding-top:8px;}.si{flex:1;}.sil{font-size:8px;text-transform:uppercase;letter-spacing:.05em;font-weight:600;}.siv{font-size:13px;font-weight:800;}.sii{font-size:9px;line-height:1.3;}</style>"
+		displayFolder: UI_HTML_Components\Pag2
+		lineageTag: 07fdd64d-d5b8-4b8d-8538-796493669912
+
+	measure HTML_PAG2_PalancaVirtualidad =
+			VAR Modo = SELECTEDVALUE ( 'Theme_Switcher'[Mode], "Dark" )
+			VAR EsLight = ( Modo = "Light" )
+			VAR FondoTarjeta = IF ( EsLight, "#FFFFFF", "#1E293B" )
+			VAR BordeTarjeta = IF ( EsLight, "#E2E8F0", "#334155" )
+			VAR Acento = IF ( EsLight, "#5C1531", "#C97F9E" )
+			VAR TextoPrincipal = IF ( EsLight, "#0F172A", "#F1F5F9" )
+			VAR TextoSecundario = IF ( EsLight, "#475569", "#CBD5E1" )
+			VAR TextoNota = IF ( EsLight, "#64748B", "#94A3B8" )
+			VAR ColorDist = "#F59E0B"
+			VAR ColorBien = IF ( EsLight, "#059669", "#34D399" )
+			VAR PreUcspTot = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_universidad'[CODIGO_INEI] = "260000062", 'dim_periodo'[ANIO] = 2025 )
+			VAR PreUcspDist = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_universidad'[CODIGO_INEI] = "260000062", CONTAINSSTRING ( 'dim_programa'[MODALIDAD], "A distancia" ), 'dim_periodo'[ANIO] = 2025 )
+			VAR PosUcspTot = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] <> "CARRERA PROFESIONAL", 'dim_universidad'[CODIGO_INEI] = "260000062", 'dim_periodo'[ANIO] = 2025 )
+			VAR PosUcspDist = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] <> "CARRERA PROFESIONAL", 'dim_universidad'[CODIGO_INEI] = "260000062", CONTAINSSTRING ( 'dim_programa'[MODALIDAD], "A distancia" ), 'dim_periodo'[ANIO] = 2025 )
+			VAR PreUtpPct = DIVIDE (
+			    CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", CONTAINSSTRING ( 'dim_programa'[MODALIDAD], "A distancia" ), CONTAINSSTRING ( 'dim_universidad'[NOMBRE_ENTIDAD], "TECNOLOGICA DEL PERU" ), 'dim_periodo'[ANIO] = 2025 ),
+			    CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", CONTAINSSTRING ( 'dim_universidad'[NOMBRE_ENTIDAD], "TECNOLOGICA DEL PERU" ), 'dim_periodo'[ANIO] = 2025 ) )
+			VAR PreContiPct = DIVIDE (
+			    CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", CONTAINSSTRING ( 'dim_programa'[MODALIDAD], "A distancia" ), CONTAINSSTRING ( 'dim_universidad'[NOMBRE_ENTIDAD], "CONTINENTAL" ), 'dim_periodo'[ANIO] = 2025 ),
+			    CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", CONTAINSSTRING ( 'dim_universidad'[NOMBRE_ENTIDAD], "CONTINENTAL" ), 'dim_periodo'[ANIO] = 2025 ) )
+			VAR ProgVirt = COUNTROWS ( FILTER (
+			        CALCULATETABLE ( VALUES ( 'dim_programa'[NOMBRE_PROGRAMA] ), 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] <> "CARRERA PROFESIONAL", 'dim_universidad'[CODIGO_INEI] = "260000062", CONTAINSSTRING ( 'dim_programa'[MODALIDAD], "A distancia" ), 'dim_periodo'[ANIO] = 2025 ),
+			        CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] <> "CARRERA PROFESIONAL", 'dim_universidad'[CODIGO_INEI] = "260000062", CONTAINSSTRING ( 'dim_programa'[MODALIDAD], "A distancia" ), 'dim_periodo'[ANIO] = 2025 ) > 0 ) )
+			VAR Base = ADDCOLUMNS ( SUMMARIZE ( 'dim_universidad', 'dim_universidad'[NOMBRE_ENTIDAD] ),
+			    "_20", CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2020 ),
+			    "_25", CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2025 ),
+			    "_d25", CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2025, CONTAINSSTRING ( 'dim_programa'[MODALIDAD], "A distancia" ) ) )
+			VAR F = ADDCOLUMNS ( FILTER ( Base,
+			        [_25] >= 500 && [_20] > 0 &&
+			        NOT CONTAINSSTRING ( 'dim_universidad'[NOMBRE_ENTIDAD], "SAN AGUSTIN" ) &&
+			        NOT CONTAINSSTRING ( 'dim_universidad'[NOMBRE_ENTIDAD], "CONSERVATORIO" ) ),
+			    "_crec", DIVIDE ( [_25] - [_20], [_20] ),
+			    "_virt", COALESCE ( DIVIDE ( [_d25], [_25] ), 0 ) )
+			VAR Mx = AVERAGEX ( F, [_virt] )
+			VAR My = AVERAGEX ( F, [_crec] )
+			VAR Sxy = SUMX ( F, ( [_virt] - Mx ) * ( [_crec] - My ) )
+			VAR Sxx = SUMX ( F, POWER ( [_virt] - Mx, 2 ) )
+			VAR Syy = SUMX ( F, POWER ( [_crec] - My, 2 ) )
+			VAR R = DIVIDE ( Sxy, SQRT ( Sxx * Syy ) )
+			VAR MercadoPre = DIVIDE ( CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2025, CONTAINSSTRING ( 'dim_programa'[MODALIDAD], "A distancia" ) ), CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2025 ) )
+			RETURN
+			"<div class='pw'><input type='checkbox' id='pv_flip' class='px'><label for='pv_flip' class='pl'><div class='pc'>" &
+			"<div class='pf' style='background:" & FondoTarjeta & ";border:1px solid " & BordeTarjeta & ";border-left:4px solid " & ColorDist & ";'>" &
+			"<div class='ph'><span class='pt' style='color:" & TextoSecundario & ";'>La palanca: virtualidad</span><span class='pn' style='color:" & TextoNota & ";'>clic para el porqué</span></div>" &
+			"<div><div class='pv' style='color:" & ColorDist & ";'>" & FORMAT ( COALESCE ( DIVIDE ( PreUcspDist, PreUcspTot ), 0 ), "0%" ) & "</div>" &
+			"<div class='ps' style='color:" & TextoSecundario & ";'>del pregrado de UCSP es a distancia. El mercado ya va en " & FORMAT ( MercadoPre, "0%" ) & ".</div></div>" &
+			"<div class='pst' style='border-color:" & BordeTarjeta & ";'>" &
+			"<div class='pi'><div class='pil' style='color:" & TextoNota & ";'>UCSP posgrado</div><div class='piv' style='color:" & ColorBien & ";'>" & FORMAT ( COALESCE ( DIVIDE ( PosUcspDist, PosUcspTot ), 0 ), "0%" ) & "</div></div>" &
+			"<div class='pi'><div class='pil' style='color:" & TextoNota & ";'>UTP pregrado</div><div class='piv' style='color:" & ColorDist & ";'>" & FORMAT ( PreUtpPct, "0%" ) & "</div></div>" &
+			"<div class='pi'><div class='pil' style='color:" & TextoNota & ";'>Programas con virtualidad</div><div class='piv' style='color:" & TextoPrincipal & ";'>" & ProgVirt & "</div></div>" &
+			"</div></div>" &
+			"<div class='pb' style='background:" & FondoTarjeta & ";border:1px solid " & BordeTarjeta & ";border-left:4px solid " & ColorDist & ";'>" &
+			"<div class='ph'><span class='pt' style='color:" & ColorDist & ";'>Por qué funciona</span><span class='pn' style='color:" & TextoNota & ";'>clic para volver</span></div>" &
+			"<div><div class='pv' style='color:" & ColorBien & ";'>" & FORMAT ( R, "0.00" ) & "</div>" &
+			"<div class='ps' style='color:" & TextoSecundario & ";'>correlación entre virtualidad y crecimiento en las 5 privadas de Arequipa (2020-25)</div></div>" &
+			"<div class='ps' style='color:" & TextoNota & ";font-size:9.5px;'>Las dos que más crecieron son las dos más virtuales: UTP " & FORMAT ( PreUtpPct, "0%" ) & " y Continental " & FORMAT ( PreContiPct, "0%" ) & ". UCSP ya opera " & ProgVirt & " programas de posgrado a distancia.</div>" &
+			"</div>" &
+			"</div></label></div>" & "<style>.pw{height:100%;min-height:170px;box-sizing:border-box;font-family:Segoe UI,Roboto,Arial,sans-serif;}.px{display:none;}.pl{display:block;height:100%;min-height:170px;cursor:pointer;}.pc{position:relative;height:100%;min-height:170px;}.pf,.pb{position:absolute;top:0;left:0;right:0;bottom:0;min-height:170px;box-sizing:border-box;border-radius:12px;padding:14px 18px;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;transition:opacity .25s;}.pb{opacity:0;pointer-events:none;}.px:checked ~ .pl .pf{opacity:0;pointer-events:none;}.px:checked ~ .pl .pb{opacity:1;pointer-events:auto;}.ph{display:flex;justify-content:space-between;align-items:baseline;gap:10px;}.pt{font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}.pn{font-size:9px;font-style:italic;white-space:nowrap;}.pv{font-size:44px;font-weight:800;line-height:1;letter-spacing:-.02em;}.ps{font-size:11px;line-height:1.3;margin-top:2px;}.pst{display:flex;gap:14px;margin-top:8px;border-top:1px solid;padding-top:7px;}.pi{flex:1;}.pil{font-size:8px;text-transform:uppercase;letter-spacing:.04em;font-weight:600;line-height:1.2;}.piv{font-size:13px;font-weight:800;line-height:1.2;}</style>"
+		lineageTag: 9bf839ca-f468-4d6b-b98d-79805068bdd5
+
+	measure HTML_PAG2_DondeGanamos =
+			VAR Modo = SELECTEDVALUE ( 'Theme_Switcher'[Mode], "Dark" )
+			VAR EsLight = ( Modo = "Light" )
+			VAR FondoTarjeta = IF ( EsLight, "#FFFFFF", "#1E293B" )
+			VAR BordeTarjeta = IF ( EsLight, "#E2E8F0", "#334155" )
+			VAR TextoPrincipal = IF ( EsLight, "#0F172A", "#F1F5F9" )
+			VAR TextoSecundario = IF ( EsLight, "#475569", "#CBD5E1" )
+			VAR TextoNota = IF ( EsLight, "#64748B", "#94A3B8" )
+			VAR BarraFondo = IF ( EsLight, "#E2E8F0", "#273449" )
+			VAR ColorBien = IF ( EsLight, "#059669", "#34D399" )
+			VAR U20_0 = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_universidad'[CODIGO_INEI] = "260000062", 'dim_periodo'[ANIO] = 2020, 'dim_programa'[NOMBRE_PROGRAMA] = "INGENIERIA MECATRONICA" )
+			VAR U25_0 = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_universidad'[CODIGO_INEI] = "260000062", 'dim_periodo'[ANIO] = 2025, 'dim_programa'[NOMBRE_PROGRAMA] = "INGENIERIA MECATRONICA" )
+			VAR M20_0 = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2020, 'dim_programa'[NOMBRE_PROGRAMA] = "INGENIERIA MECATRONICA" )
+			VAR M25_0 = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2025, 'dim_programa'[NOMBRE_PROGRAMA] = "INGENIERIA MECATRONICA" )
+			VAR S20_0 = DIVIDE ( U20_0, M20_0 )
+			VAR S25_0 = DIVIDE ( U25_0, M25_0 )
+			VAR U20_1 = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_universidad'[CODIGO_INEI] = "260000062", 'dim_periodo'[ANIO] = 2020, 'dim_programa'[NOMBRE_PROGRAMA] = "INGENIERIA AMBIENTAL" )
+			VAR U25_1 = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_universidad'[CODIGO_INEI] = "260000062", 'dim_periodo'[ANIO] = 2025, 'dim_programa'[NOMBRE_PROGRAMA] = "INGENIERIA AMBIENTAL" )
+			VAR M20_1 = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2020, 'dim_programa'[NOMBRE_PROGRAMA] = "INGENIERIA AMBIENTAL" )
+			VAR M25_1 = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2025, 'dim_programa'[NOMBRE_PROGRAMA] = "INGENIERIA AMBIENTAL" )
+			VAR S20_1 = DIVIDE ( U20_1, M20_1 )
+			VAR S25_1 = DIVIDE ( U25_1, M25_1 )
+			VAR U20_2 = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_universidad'[CODIGO_INEI] = "260000062", 'dim_periodo'[ANIO] = 2020, 'dim_programa'[NOMBRE_PROGRAMA] = "CIENCIA DE LA COMPUTACION" )
+			VAR U25_2 = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_universidad'[CODIGO_INEI] = "260000062", 'dim_periodo'[ANIO] = 2025, 'dim_programa'[NOMBRE_PROGRAMA] = "CIENCIA DE LA COMPUTACION" )
+			VAR M20_2 = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2020, 'dim_programa'[NOMBRE_PROGRAMA] = "CIENCIA DE LA COMPUTACION" )
+			VAR M25_2 = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2025, 'dim_programa'[NOMBRE_PROGRAMA] = "CIENCIA DE LA COMPUTACION" )
+			VAR S20_2 = DIVIDE ( U20_2, M20_2 )
+			VAR S25_2 = DIVIDE ( U25_2, M25_2 )
+			RETURN
+			"<div class='gw'><input type='checkbox' id='gw_flip' class='gx'><label for='gw_flip' class='gl'><div class='gc'>" &
+			"<div class='gf' style='background:" & FondoTarjeta & ";border:1px solid " & BordeTarjeta & ";border-left:4px solid " & ColorBien & ";'>" &
+			"<div class='gh'><span class='gt' style='color:" & TextoSecundario & ";'>Dónde ganamos cuota</span><span class='hn' style='color:" & TextoNota & ";'>2020 → 2025 · clic</span></div>" &
+			"<div><div class='gv1' style='color:" & ColorBien & ";'>+" & FORMAT ( ( S25_0 - S20_0 ) * 100, "0.0" ) & " pp</div>" &
+			"<div class='gs' style='color:" & TextoSecundario & ";'>Mecatrónica pasó de " & FORMAT ( S20_0, "0.0%" ) & " a " & FORMAT ( S25_0, "0.0%" ) & " del mercado de su carrera.</div></div>" &
+			"<div class='gr'><span class='gn'>Mecatrónica</span><div class='gb' style='background:" & BarraFondo & ";'><div class='gb2' style='width:" & FORMAT ( MIN ( S25_0 * 100, 100 ), "0" ) & "%;background:" & ColorBien & ";'></div></div><span class='gv' style='color:" & TextoPrincipal & ";'>" & FORMAT ( S20_0, "0.0%" ) & " → " & FORMAT ( S25_0, "0.0%" ) & "</span></div>" &
+			"<div class='gr'><span class='gn'>Ambiental</span><div class='gb' style='background:" & BarraFondo & ";'><div class='gb2' style='width:" & FORMAT ( MIN ( S25_1 * 100, 100 ), "0" ) & "%;background:" & ColorBien & ";'></div></div><span class='gv' style='color:" & TextoPrincipal & ";'>" & FORMAT ( S20_1, "0.0%" ) & " → " & FORMAT ( S25_1, "0.0%" ) & "</span></div>" &
+			"<div class='gr'><span class='gn'>C. Computación</span><div class='gb' style='background:" & BarraFondo & ";'><div class='gb2' style='width:" & FORMAT ( MIN ( S25_2 * 100, 100 ), "0" ) & "%;background:" & ColorBien & ";'></div></div><span class='gv' style='color:" & TextoPrincipal & ";'>" & FORMAT ( S20_2, "0.0%" ) & " → " & FORMAT ( S25_2, "0.0%" ) & "</span></div>" &
+			"<div class='gs' style='color:" & TextoNota & ";font-size:9.5px;'>Cuota = matrículas UCSP ÷ mercado del programa en Arequipa.</div>" &
+			"</div>" &
+			"<div class='gbb' style='background:" & FondoTarjeta & ";border:1px solid " & BordeTarjeta & ";border-left:4px solid " & ColorBien & ";'>" &
+			"<div class='gh'><span class='gt' style='color:" & ColorBien & ";'>El tamaño del premio</span><span class='hn' style='color:" & TextoNota & ";'>clic para volver</span></div>" &
+			"<div class='gr'><span class='gn'>Mecatrónica</span><div class='gb' style='background:" & BarraFondo & ";'><div class='gb2' style='width:" & FORMAT ( MIN ( DIVIDE ( M25_0, 4000 ) * 100, 100 ), "0" ) & "%;background:" & TextoSecundario & ";'></div></div><span class='gv' style='color:" & TextoNota & ";'>" & FORMAT ( M25_0, "#,##0" ) & " · " & FORMAT ( U25_0, "#,##0" ) & "</span></div>" &
+			"<div class='gr'><span class='gn'>Ambiental</span><div class='gb' style='background:" & BarraFondo & ";'><div class='gb2' style='width:" & FORMAT ( MIN ( DIVIDE ( M25_1, 4000 ) * 100, 100 ), "0" ) & "%;background:" & TextoSecundario & ";'></div></div><span class='gv' style='color:" & TextoNota & ";'>" & FORMAT ( M25_1, "#,##0" ) & " · " & FORMAT ( U25_1, "#,##0" ) & "</span></div>" &
+			"<div class='gr'><span class='gn'>C. Computación</span><div class='gb' style='background:" & BarraFondo & ";'><div class='gb2' style='width:" & FORMAT ( MIN ( DIVIDE ( M25_2, 4000 ) * 100, 100 ), "0" ) & "%;background:" & TextoSecundario & ";'></div></div><span class='gv' style='color:" & TextoNota & ";'>" & FORMAT ( M25_2, "#,##0" ) & " · " & FORMAT ( U25_2, "#,##0" ) & "</span></div>" &
+			"<div class='gs' style='color:" & TextoPrincipal & ";font-size:9.5px;'>Mercado 2025 · UCSP 2025. Los tres son <b>presenciales</b> y nacieron hace pocos años: ya capturan cuota sin depender de que el mercado crezca.</div>" &
+			"</div>" &
+			"</div></label></div>" & "<style>.gw{height:100%;min-height:170px;box-sizing:border-box;font-family:Segoe UI,Roboto,Arial,sans-serif;}.gx{display:none;}.gl{display:block;height:100%;min-height:170px;cursor:pointer;}.gc{position:relative;height:100%;min-height:170px;}.gf,.gbb{position:absolute;top:0;left:0;right:0;bottom:0;min-height:170px;box-sizing:border-box;border-radius:12px;padding:14px 18px;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;transition:opacity .25s;}.gbb{opacity:0;pointer-events:none;}.gx:checked ~ .gl .gf{opacity:0;pointer-events:none;}.gx:checked ~ .gl .gbb{opacity:1;pointer-events:auto;}.gh{display:flex;justify-content:space-between;align-items:baseline;gap:10px;}.gt{font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}.hn{font-size:9px;font-style:italic;white-space:nowrap;}.gv1{font-size:34px;font-weight:800;line-height:1;letter-spacing:-.02em;}.gs{font-size:10.5px;line-height:1.3;margin-top:2px;}.gr{display:flex;align-items:center;gap:7px;margin-bottom:5px;}.gn{width:86px;flex:none;font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}.gb{flex:1;height:9px;border-radius:4px;overflow:hidden;}.gb2{height:9px;border-radius:4px;}.gv{width:78px;flex:none;text-align:right;font-weight:700;font-size:10.5px;}</style>"
+		lineageTag: 286b4d2a-6e71-409b-b6fa-41a82721fc3b
+
+	measure HTML_PAG2_NucleoPresencial =
+			VAR Modo = SELECTEDVALUE ( 'Theme_Switcher'[Mode], "Dark" )
+			VAR EsLight = ( Modo = "Light" )
+			VAR FondoTarjeta = IF ( EsLight, "#FFFFFF", "#1E293B" )
+			VAR BordeTarjeta = IF ( EsLight, "#E2E8F0", "#334155" )
+			VAR TextoPrincipal = IF ( EsLight, "#0F172A", "#F1F5F9" )
+			VAR TextoSecundario = IF ( EsLight, "#475569", "#CBD5E1" )
+			VAR TextoNota = IF ( EsLight, "#64748B", "#94A3B8" )
+			VAR BarraFondo = IF ( EsLight, "#E2E8F0", "#273449" )
+			VAR ColorBien = IF ( EsLight, "#059669", "#34D399" )
+			VAR ColorDist = "#F59E0B"
+			VAR NP_0 = COALESCE ( DIVIDE ( CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2025, 'dim_programa'[NOMBRE_PROGRAMA] = "INGENIERIA MECATRONICA", CONTAINSSTRING ( 'dim_programa'[MODALIDAD], "A distancia" ) ), CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2025, 'dim_programa'[NOMBRE_PROGRAMA] = "INGENIERIA MECATRONICA" ) ), 0 )
+			VAR NP_1 = COALESCE ( DIVIDE ( CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2025, 'dim_programa'[NOMBRE_PROGRAMA] = "INGENIERIA AMBIENTAL", CONTAINSSTRING ( 'dim_programa'[MODALIDAD], "A distancia" ) ), CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2025, 'dim_programa'[NOMBRE_PROGRAMA] = "INGENIERIA AMBIENTAL" ) ), 0 )
+			VAR NP_2 = COALESCE ( DIVIDE ( CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2025, 'dim_programa'[NOMBRE_PROGRAMA] = "CIENCIA DE LA COMPUTACION", CONTAINSSTRING ( 'dim_programa'[MODALIDAD], "A distancia" ) ), CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2025, 'dim_programa'[NOMBRE_PROGRAMA] = "CIENCIA DE LA COMPUTACION" ) ), 0 )
+			VAR NP_3 = COALESCE ( DIVIDE ( CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2025, 'dim_programa'[NOMBRE_PROGRAMA] = "INGENIERIA INDUSTRIAL", CONTAINSSTRING ( 'dim_programa'[MODALIDAD], "A distancia" ) ), CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2025, 'dim_programa'[NOMBRE_PROGRAMA] = "INGENIERIA INDUSTRIAL" ) ), 0 )
+			VAR NP_4 = COALESCE ( DIVIDE ( CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2025, 'dim_programa'[NOMBRE_PROGRAMA] = "CONTABILIDAD", CONTAINSSTRING ( 'dim_programa'[MODALIDAD], "A distancia" ) ), CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2025, 'dim_programa'[NOMBRE_PROGRAMA] = "CONTABILIDAD" ) ), 0 )
+			VAR NP_5 = COALESCE ( DIVIDE ( CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2025, 'dim_programa'[NOMBRE_PROGRAMA] = "PSICOLOGIA", CONTAINSSTRING ( 'dim_programa'[MODALIDAD], "A distancia" ) ), CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2025, 'dim_programa'[NOMBRE_PROGRAMA] = "PSICOLOGIA" ) ), 0 )
+			RETURN
+			"<div class='nw'><input type='checkbox' id='np_flip' class='nx'><label for='np_flip' class='nl'><div class='nc'>" &
+			"<div class='nf' style='background:" & FondoTarjeta & ";border:1px solid " & BordeTarjeta & ";border-left:4px solid " & ColorBien & ";'>" &
+			"<div class='nh'><span class='nt' style='color:" & TextoSecundario & ";'>El núcleo presencial</span><span class='hn9' style='color:" & TextoNota & ";'>por qué ganamos · clic</span></div>" &
+			"<div class='nduo'>" &
+			"<div class='ncell'><div class='nv' style='color:" & ColorBien & ";'>" & FORMAT ( MIN ( MIN ( NP_0, NP_1 ), NP_2 ), "0%" ) & " - " & FORMAT ( MAX ( MAX ( NP_0, NP_1 ), NP_2 ), "0%" ) & "</div>" &
+			"<div class='nlab' style='color:" & TextoSecundario & ";'>virtualidad de los mercados donde <b>ganamos</b> cuota</div></div>" &
+			"<div class='ncell'><div class='nv' style='color:" & ColorDist & ";'>" & FORMAT ( MIN ( MIN ( NP_3, NP_4 ), NP_5 ), "0%" ) & " - " & FORMAT ( MAX ( MAX ( NP_3, NP_4 ), NP_5 ), "0%" ) & "</div>" &
+			"<div class='nlab' style='color:" & TextoSecundario & ";'>virtualidad de los mercados donde <b>perdemos</b> cuota</div></div>" &
+			"</div>" &
+			"<div class='nlab' style='color:" & TextoNota & ";font-size:9.5px;'>Ganamos donde el mercado siguió presencial. Perdemos donde se virtualizó.</div>" &
+			"</div>" &
+			"<div class='nb' style='background:" & FondoTarjeta & ";border:1px solid " & BordeTarjeta & ";border-left:4px solid " & ColorBien & ";'>" &
+			"<div class='nh'><span class='nt' style='color:" & ColorBien & ";'>El mapa por carrera</span><span class='hn9' style='color:" & TextoNota & ";'>clic para volver</span></div>" &
+			"<div class='nr'><span class='nn' style='color:" & ( IF ( true, ColorBien, TextoSecundario ) ) & ";'>Mecatrónica</span><div class='nbg' style='background:" & BarraFondo & ";'><div class='nbr' style='width:" & FORMAT ( MIN ( DIVIDE ( NP_0, 0.8 ) * 100, 100 ), "0" ) & "%;background:" & ( IF ( true, ColorBien, ColorDist ) ) & ";'></div></div><span class='npc' style='color:" & ( IF ( true, ColorBien, ColorDist ) ) & ";'>" & FORMAT ( NP_0, "0%" ) & "</span></div>" &
+			"<div class='nr'><span class='nn' style='color:" & ( IF ( true, ColorBien, TextoSecundario ) ) & ";'>Ambiental</span><div class='nbg' style='background:" & BarraFondo & ";'><div class='nbr' style='width:" & FORMAT ( MIN ( DIVIDE ( NP_1, 0.8 ) * 100, 100 ), "0" ) & "%;background:" & ( IF ( true, ColorBien, ColorDist ) ) & ";'></div></div><span class='npc' style='color:" & ( IF ( true, ColorBien, ColorDist ) ) & ";'>" & FORMAT ( NP_1, "0%" ) & "</span></div>" &
+			"<div class='nr'><span class='nn' style='color:" & ( IF ( true, ColorBien, TextoSecundario ) ) & ";'>C. Computación</span><div class='nbg' style='background:" & BarraFondo & ";'><div class='nbr' style='width:" & FORMAT ( MIN ( DIVIDE ( NP_2, 0.8 ) * 100, 100 ), "0" ) & "%;background:" & ( IF ( true, ColorBien, ColorDist ) ) & ";'></div></div><span class='npc' style='color:" & ( IF ( true, ColorBien, ColorDist ) ) & ";'>" & FORMAT ( NP_2, "0%" ) & "</span></div>" &
+			"<div class='nr'><span class='nn' style='color:" & ( IF ( false, ColorBien, TextoSecundario ) ) & ";'>Industrial</span><div class='nbg' style='background:" & BarraFondo & ";'><div class='nbr' style='width:" & FORMAT ( MIN ( DIVIDE ( NP_3, 0.8 ) * 100, 100 ), "0" ) & "%;background:" & ( IF ( false, ColorBien, ColorDist ) ) & ";'></div></div><span class='npc' style='color:" & ( IF ( false, ColorBien, ColorDist ) ) & ";'>" & FORMAT ( NP_3, "0%" ) & "</span></div>" &
+			"<div class='nr'><span class='nn' style='color:" & ( IF ( false, ColorBien, TextoSecundario ) ) & ";'>Contabilidad</span><div class='nbg' style='background:" & BarraFondo & ";'><div class='nbr' style='width:" & FORMAT ( MIN ( DIVIDE ( NP_4, 0.8 ) * 100, 100 ), "0" ) & "%;background:" & ( IF ( false, ColorBien, ColorDist ) ) & ";'></div></div><span class='npc' style='color:" & ( IF ( false, ColorBien, ColorDist ) ) & ";'>" & FORMAT ( NP_4, "0%" ) & "</span></div>" &
+			"<div class='nr'><span class='nn' style='color:" & ( IF ( false, ColorBien, TextoSecundario ) ) & ";'>Psicología</span><div class='nbg' style='background:" & BarraFondo & ";'><div class='nbr' style='width:" & FORMAT ( MIN ( DIVIDE ( NP_5, 0.8 ) * 100, 100 ), "0" ) & "%;background:" & ( IF ( false, ColorBien, ColorDist ) ) & ";'></div></div><span class='npc' style='color:" & ( IF ( false, ColorBien, ColorDist ) ) & ";'>" & FORMAT ( NP_5, "0%" ) & "</span></div>" &
+			"<div class='nlab' style='color:" & TextoNota & ";font-size:9px;'>Barra = % a distancia del mercado de esa carrera en Arequipa 2025.</div>" &
+			"</div>" &
+			"</div></label></div>" & "<style>.nw{height:100%;min-height:170px;box-sizing:border-box;font-family:Segoe UI,Roboto,Arial,sans-serif;}.nx{display:none;}.nl{display:block;height:100%;min-height:170px;cursor:pointer;}.nc{position:relative;height:100%;min-height:170px;}.nf,.nb{position:absolute;top:0;left:0;right:0;bottom:0;min-height:170px;box-sizing:border-box;border-radius:12px;padding:14px 18px;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;transition:opacity .25s;}.nb{opacity:0;pointer-events:none;}.nx:checked ~ .nl .nf{opacity:0;pointer-events:none;}.nx:checked ~ .nl .nb{opacity:1;pointer-events:auto;}.nh{display:flex;justify-content:space-between;align-items:baseline;gap:10px;}.nt{font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}.hn9{font-size:9px;font-style:italic;white-space:nowrap;}.nduo{display:flex;gap:12px;align-items:flex-end;}.ncell{flex:1;}.nv{font-size:27px;font-weight:800;line-height:1;letter-spacing:-.02em;}.nlab{font-size:9px;line-height:1.25;margin-top:3px;}.nr{display:flex;align-items:center;gap:7px;margin-bottom:4px;}.nn{width:86px;flex:none;font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}.nbg{flex:1;height:9px;border-radius:4px;overflow:hidden;}.nbr{height:9px;border-radius:4px;}.npc{width:38px;flex:none;text-align:right;font-weight:800;font-size:10.5px;}</style>"
+		lineageTag: 483f60fc-56fb-4f07-b877-19c73f6e9b2f
+
+	measure HTML_PAG2_DondePerdemos =
+			VAR Modo = SELECTEDVALUE ( 'Theme_Switcher'[Mode], "Dark" )
+			VAR EsLight = ( Modo = "Light" )
+			VAR FondoTarjeta = IF ( EsLight, "#FFFFFF", "#1E293B" )
+			VAR BordeTarjeta = IF ( EsLight, "#E2E8F0", "#334155" )
+			VAR TextoPrincipal = IF ( EsLight, "#0F172A", "#F1F5F9" )
+			VAR TextoSecundario = IF ( EsLight, "#475569", "#CBD5E1" )
+			VAR TextoNota = IF ( EsLight, "#64748B", "#94A3B8" )
+			VAR BarraFondo = IF ( EsLight, "#E2E8F0", "#273449" )
+			VAR ColorBien = IF ( EsLight, "#059669", "#34D399" )
+			VAR ColorDist = "#F59E0B"
+			VAR C_U20_0 = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_universidad'[CODIGO_INEI] = "260000062", 'dim_periodo'[ANIO] = 2020, 'dim_programa'[NOMBRE_PROGRAMA] = "INGENIERIA INDUSTRIAL" )
+			VAR C_U25_0 = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_universidad'[CODIGO_INEI] = "260000062", 'dim_periodo'[ANIO] = 2025, 'dim_programa'[NOMBRE_PROGRAMA] = "INGENIERIA INDUSTRIAL" )
+			VAR C_M20_0 = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2020, 'dim_programa'[NOMBRE_PROGRAMA] = "INGENIERIA INDUSTRIAL" )
+			VAR C_M25_0 = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2025, 'dim_programa'[NOMBRE_PROGRAMA] = "INGENIERIA INDUSTRIAL" )
+			VAR C_S20_0 = DIVIDE ( C_U20_0, C_M20_0 )
+			VAR C_S25_0 = DIVIDE ( C_U25_0, C_M25_0 )
+			VAR C_D_0 = C_U25_0 - C_U20_0
+			VAR C_G_0 = DIVIDE ( C_M25_0 - C_M20_0, C_M20_0 )
+			VAR C_U20_1 = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_universidad'[CODIGO_INEI] = "260000062", 'dim_periodo'[ANIO] = 2020, 'dim_programa'[NOMBRE_PROGRAMA] = "CONTABILIDAD" )
+			VAR C_U25_1 = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_universidad'[CODIGO_INEI] = "260000062", 'dim_periodo'[ANIO] = 2025, 'dim_programa'[NOMBRE_PROGRAMA] = "CONTABILIDAD" )
+			VAR C_M20_1 = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2020, 'dim_programa'[NOMBRE_PROGRAMA] = "CONTABILIDAD" )
+			VAR C_M25_1 = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2025, 'dim_programa'[NOMBRE_PROGRAMA] = "CONTABILIDAD" )
+			VAR C_S20_1 = DIVIDE ( C_U20_1, C_M20_1 )
+			VAR C_S25_1 = DIVIDE ( C_U25_1, C_M25_1 )
+			VAR C_D_1 = C_U25_1 - C_U20_1
+			VAR C_G_1 = DIVIDE ( C_M25_1 - C_M20_1, C_M20_1 )
+			VAR C_U20_2 = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_universidad'[CODIGO_INEI] = "260000062", 'dim_periodo'[ANIO] = 2020, 'dim_programa'[NOMBRE_PROGRAMA] = "EDUCACION" )
+			VAR C_U25_2 = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_universidad'[CODIGO_INEI] = "260000062", 'dim_periodo'[ANIO] = 2025, 'dim_programa'[NOMBRE_PROGRAMA] = "EDUCACION" )
+			VAR C_M20_2 = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2020, 'dim_programa'[NOMBRE_PROGRAMA] = "EDUCACION" )
+			VAR C_M25_2 = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2025, 'dim_programa'[NOMBRE_PROGRAMA] = "EDUCACION" )
+			VAR C_S20_2 = DIVIDE ( C_U20_2, C_M20_2 )
+			VAR C_S25_2 = DIVIDE ( C_U25_2, C_M25_2 )
+			VAR C_D_2 = C_U25_2 - C_U20_2
+			VAR C_G_2 = DIVIDE ( C_M25_2 - C_M20_2, C_M20_2 )
+			RETURN
+			"<div class='nw'><input type='checkbox' id='dp_flip' class='nx'><label for='dp_flip' class='nl'><div class='nc'>" &
+			"<div class='nf' style='background:" & FondoTarjeta & ";border:1px solid " & BordeTarjeta & ";border-left:4px solid " & ColorDist & ";'>" &
+			"<div class='nh'><span class='nt' style='color:" & TextoSecundario & ";'>Dónde perdemos</span><span class='hn9' style='color:" & TextoNota & ";'>2020 → 2025 · clic</span></div>" &
+			"<div><div class='nv' style='color:" & ColorDist & ";'>" & FORMAT ( C_D_0, "+#,##0;-#,##0" ) & "</div>" &
+			"<div class='nlab' style='color:" & TextoSecundario & ";'>Ing. Industrial: de " & FORMAT ( C_U20_0, "#,##0" ) & " a " & FORMAT ( C_U25_0, "#,##0" ) & " matrículas</div></div>" &
+			"<div class='nr'><span class='nn' style='color:" & TextoSecundario & ";'>Industrial</span><div class='nbg' style='background:" & BarraFondo & ";'><div class='nbr' style='width:" & FORMAT ( MIN ( DIVIDE ( - C_D_0, 1000 ) * 100, 100 ), "0" ) & "%;background:" & ColorDist & ";'></div></div><span class='npc' style='color:" & ColorDist & ";width:46px;'>" & FORMAT ( C_D_0, "+#,##0;-#,##0" ) & "</span><span class='npc' style='color:" & TextoNota & ";width:70px;'>" & FORMAT ( C_S20_0, "0%" ) & " → " & FORMAT ( C_S25_0, "0%" ) & "</span></div>" &
+			"<div class='nr'><span class='nn' style='color:" & TextoSecundario & ";'>Contabilidad</span><div class='nbg' style='background:" & BarraFondo & ";'><div class='nbr' style='width:" & FORMAT ( MIN ( DIVIDE ( - C_D_1, 1000 ) * 100, 100 ), "0" ) & "%;background:" & ColorDist & ";'></div></div><span class='npc' style='color:" & ColorDist & ";width:46px;'>" & FORMAT ( C_D_1, "+#,##0;-#,##0" ) & "</span><span class='npc' style='color:" & TextoNota & ";width:70px;'>" & FORMAT ( C_S20_1, "0%" ) & " → " & FORMAT ( C_S25_1, "0%" ) & "</span></div>" &
+			"<div class='nr'><span class='nn' style='color:" & TextoSecundario & ";'>Educación</span><div class='nbg' style='background:" & BarraFondo & ";'><div class='nbr' style='width:" & FORMAT ( MIN ( DIVIDE ( - C_D_2, 1000 ) * 100, 100 ), "0" ) & "%;background:" & ColorDist & ";'></div></div><span class='npc' style='color:" & ColorDist & ";width:46px;'>" & FORMAT ( C_D_2, "+#,##0;-#,##0" ) & "</span><span class='npc' style='color:" & TextoNota & ";width:70px;'>" & FORMAT ( C_S20_2, "0%" ) & " → " & FORMAT ( C_S25_2, "0%" ) & "</span></div>" &
+			"<div class='nlab' style='color:" & TextoNota & ";font-size:9px;'>Columna gris = cuota UCSP en ese programa. Educación es 100% UCSP.</div>" &
+			"</div>" &
+			"<div class='nb' style='background:" & FondoTarjeta & ";border:1px solid " & BordeTarjeta & ";border-left:4px solid " & ColorDist & ";'>" &
+			"<div class='nh'><span class='nt' style='color:" & ColorDist & ";'>Por qué</span><span class='hn9' style='color:" & TextoNota & ";'>mercado vs UCSP · clic</span></div>" &
+			"<div class='nr'><span class='nn' style='color:" & TextoPrincipal & ";'>Industrial</span><div class='nbg' style='background:" & BarraFondo & ";'><div class='nbr' style='width:" & FORMAT ( MIN ( DIVIDE ( ABS ( C_G_0 ), MAX ( MAX ( C_G_0, C_G_1 ), 0.01 ) ) * 100, 100 ), "0" ) & "%;background:" & ( IF ( C_G_0 > 0, TextoSecundario, ColorDist ) ) & ";'></div></div><span class='npc' style='color:" & ( IF ( C_G_0 > 0, TextoSecundario, ColorDist ) ) & ";width:52px;'>" & FORMAT ( C_G_0, "+0%;-0%" ) & "</span><span class='npc' style='color:" & ColorDist & ";width:52px;'>" & FORMAT ( DIVIDE ( C_U25_0 - C_U20_0, C_U20_0 ), "+0%;-0%" ) & "</span></div>" &
+			"<div class='nr'><span class='nn' style='color:" & TextoPrincipal & ";'>Contabilidad</span><div class='nbg' style='background:" & BarraFondo & ";'><div class='nbr' style='width:" & FORMAT ( MIN ( DIVIDE ( ABS ( C_G_1 ), MAX ( MAX ( C_G_0, C_G_1 ), 0.01 ) ) * 100, 100 ), "0" ) & "%;background:" & ( IF ( C_G_1 > 0, TextoSecundario, ColorDist ) ) & ";'></div></div><span class='npc' style='color:" & ( IF ( C_G_1 > 0, TextoSecundario, ColorDist ) ) & ";width:52px;'>" & FORMAT ( C_G_1, "+0%;-0%" ) & "</span><span class='npc' style='color:" & ColorDist & ";width:52px;'>" & FORMAT ( DIVIDE ( C_U25_1 - C_U20_1, C_U20_1 ), "+0%;-0%" ) & "</span></div>" &
+			"<div class='nr'><span class='nn' style='color:" & TextoPrincipal & ";'>Educación</span><div class='nbg' style='background:" & BarraFondo & ";'><div class='nbr' style='width:" & FORMAT ( MIN ( DIVIDE ( ABS ( C_G_2 ), MAX ( MAX ( C_G_0, C_G_1 ), 0.01 ) ) * 100, 100 ), "0" ) & "%;background:" & ( IF ( C_G_2 > 0, TextoSecundario, ColorDist ) ) & ";'></div></div><span class='npc' style='color:" & ( IF ( C_G_2 > 0, TextoSecundario, ColorDist ) ) & ";width:52px;'>" & FORMAT ( C_G_2, "+0%;-0%" ) & "</span><span class='npc' style='color:" & ColorDist & ";width:52px;'>" & FORMAT ( DIVIDE ( C_U25_2 - C_U20_2, C_U20_2 ), "+0%;-0%" ) & "</span></div>" &
+			"<div class='nlab' style='color:" & TextoPrincipal & ";font-size:9.5px;'><b>No perdimos por el mercado: perdimos contra el mercado.</b> Educación es la excepción: no hay competencia, se encoge solo.</div>" &
+			"</div>" &
+			"</div></label></div>" & "<style>.nw{height:100%;min-height:170px;box-sizing:border-box;font-family:Segoe UI,Roboto,Arial,sans-serif;}.nx{display:none;}.nl{display:block;height:100%;min-height:170px;cursor:pointer;}.nc{position:relative;height:100%;min-height:170px;}.nf,.nb{position:absolute;top:0;left:0;right:0;bottom:0;min-height:170px;box-sizing:border-box;border-radius:12px;padding:14px 18px;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;transition:opacity .25s;}.nb{opacity:0;pointer-events:none;}.nx:checked ~ .nl .nf{opacity:0;pointer-events:none;}.nx:checked ~ .nl .nb{opacity:1;pointer-events:auto;}.nh{display:flex;justify-content:space-between;align-items:baseline;gap:10px;}.nt{font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}.hn9{font-size:9px;font-style:italic;white-space:nowrap;}.nduo{display:flex;gap:12px;align-items:flex-end;}.ncell{flex:1;}.nv{font-size:27px;font-weight:800;line-height:1;letter-spacing:-.02em;}.nlab{font-size:9px;line-height:1.25;margin-top:3px;}.nr{display:flex;align-items:center;gap:7px;margin-bottom:4px;}.nn{width:86px;flex:none;font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}.nbg{flex:1;height:9px;border-radius:4px;overflow:hidden;}.nbr{height:9px;border-radius:4px;}.npc{width:38px;flex:none;text-align:right;font-weight:800;font-size:10.5px;}</style>"
+		lineageTag: 54adaf46-1709-4681-a74d-671616d3291a
+
+	measure HTML_PAG2_FranquiciaRegional =
+			VAR Modo = SELECTEDVALUE ( 'Theme_Switcher'[Mode], "Dark" )
+			VAR EsLight = ( Modo = "Light" )
+			VAR FondoTarjeta = IF ( EsLight, "#FFFFFF", "#1E293B" )
+			VAR BordeTarjeta = IF ( EsLight, "#E2E8F0", "#334155" )
+			VAR Acento = IF ( EsLight, "#5C1531", "#C97F9E" )
+			VAR TextoPrincipal = IF ( EsLight, "#0F172A", "#F1F5F9" )
+			VAR TextoSecundario = IF ( EsLight, "#475569", "#CBD5E1" )
+			VAR TextoNota = IF ( EsLight, "#64748B", "#94A3B8" )
+			VAR BarraFondo = IF ( EsLight, "#E2E8F0", "#273449" )
+			VAR Tot25 = CALCULATE ( SUM ( origen_ucsp[MATRICULAS] ), origen_ucsp[ANIO] = 2025 )
+			VAR Fuera25 = CALCULATE ( SUM ( origen_ucsp[MATRICULAS] ), origen_ucsp[ANIO] = 2025, origen_ucsp[DEPARTAMENTO_NACIMIENTO] <> "AREQUIPA" )
+			VAR Tot20 = CALCULATE ( SUM ( origen_ucsp[MATRICULAS] ), origen_ucsp[ANIO] = 2020 )
+			VAR Fuera20 = CALCULATE ( SUM ( origen_ucsp[MATRICULAS] ), origen_ucsp[ANIO] = 2020, origen_ucsp[DEPARTAMENTO_NACIMIENTO] <> "AREQUIPA" )
+			VAR Pct25 = DIVIDE ( Fuera25, Tot25 )
+			VAR Pct20 = DIVIDE ( Fuera20, Tot20 )
+			VAR Delta = ( Pct25 - Pct20 ) * 100
+			VAR Puno = CALCULATE ( SUM ( origen_ucsp[MATRICULAS] ), origen_ucsp[ANIO] = 2025, origen_ucsp[DEPARTAMENTO_NACIMIENTO] = "PUNO" )
+			VAR Cusco = CALCULATE ( SUM ( origen_ucsp[MATRICULAS] ), origen_ucsp[ANIO] = 2025, origen_ucsp[DEPARTAMENTO_NACIMIENTO] = "CUSCO" )
+			VAR Base = ADDCOLUMNS ( VALUES ( origen_ucsp[DEPARTAMENTO_NACIMIENTO] ),
+			    "_v", CALCULATE ( SUM ( origen_ucsp[MATRICULAS] ), origen_ucsp[ANIO] = 2025 ) )
+			VAR Top5 = TOPN ( 5, FILTER ( Base,
+			        [_v] > 0 &&
+			        origen_ucsp[DEPARTAMENTO_NACIMIENTO] <> "AREQUIPA" &&
+			        origen_ucsp[DEPARTAMENTO_NACIMIENTO] <> "SIN DATO" &&
+			        origen_ucsp[DEPARTAMENTO_NACIMIENTO] <> "NO ESPECIFICADO" ),
+			    [_v], DESC )
+			VAR MaxV = MAXX ( Top5, [_v] )
+			VAR Filas = CONCATENATEX ( Top5,
+			    VAR D = origen_ucsp[DEPARTAMENTO_NACIMIENTO]
+			    VAR Bonito = UPPER ( LEFT ( D, 1 ) ) & LOWER ( MID ( D, 2, 100 ) )
+			    RETURN
+			        "<div class='fr'><span class='fn' style='color:" & TextoPrincipal & ";'>" & Bonito & "</span>" &
+			        "<div class='fbg' style='background:" & BarraFondo & ";'><div class='fbr' style='width:" & FORMAT ( DIVIDE ( [_v], MaxV ) * 100, "0" ) & "%;background:" & Acento & ";'></div></div>" &
+			        "<span class='fv' style='color:" & Acento & ";'>" & FORMAT ( [_v], "#,##0" ) & "</span></div>",
+			    "", [_v], DESC )
+			RETURN
+			"<div class='fw'><input type='checkbox' id='fr_flip' class='fx'><label for='fr_flip' class='fl'><div class='fc'>" &
+			"<div class='ff' style='background:" & FondoTarjeta & ";border:1px solid " & BordeTarjeta & ";border-left:4px solid " & Acento & ";'>" &
+			"<div class='fh'><span class='ft' style='color:" & TextoSecundario & ";'>La franquicia regional</span><span class='hn9' style='color:" & TextoNota & ";'>2025 · clic</span></div>" &
+			"<div><div class='fv1' style='color:" & Acento & ";'>" & FORMAT ( Pct25, "0.0%" ) & "</div>" &
+			"<div class='fs' style='color:" & TextoSecundario & ";'>de los alumnos de UCSP <b>nació fuera de Arequipa</b>.</div></div>" &
+			"<div class='fst' style='border-color:" & BordeTarjeta & ";'>" &
+			"<div class='fi'><div class='fil' style='color:" & TextoNota & ";'>En 2020</div><div class='fiv' style='color:" & TextoSecundario & ";'>" & FORMAT ( Pct20, "0.0%" ) & "</div></div>" &
+			"<div class='fi'><div class='fil' style='color:" & TextoNota & ";'>Puno</div><div class='fiv' style='color:" & TextoPrincipal & ";'>" & FORMAT ( Puno, "#,##0" ) & "</div></div>" &
+			"<div class='fi'><div class='fil' style='color:" & TextoNota & ";'>Cusco</div><div class='fiv' style='color:" & TextoPrincipal & ";'>" & FORMAT ( Cusco, "#,##0" ) & "</div></div>" &
+			"</div></div>" &
+			"<div class='fb2' style='background:" & FondoTarjeta & ";border:1px solid " & BordeTarjeta & ";border-left:4px solid " & Acento & ";'>" &
+			"<div class='fh'><span class='ft' style='color:" & Acento & ";'>De dónde vienen</span><span class='hn9' style='color:" & TextoNota & ";'>clic para volver</span></div>" &
+			Filas &
+			"<div class='fs' style='color:" & TextoPrincipal & ";font-size:9.5px;'>Uno de cada tres alumnos ya es de fuera. <b>+" & FORMAT ( Delta, "0.0" ) & " pp</b> desde 2020: la demanda regional ya elige UCSP.</div>" &
+			"</div>" &
+			"</div></label></div>" & "<style>.fw{height:100%;min-height:170px;box-sizing:border-box;font-family:Segoe UI,Roboto,Arial,sans-serif;}.fx{display:none;}.fl{display:block;height:100%;min-height:170px;cursor:pointer;}.fc{position:relative;height:100%;min-height:170px;}.ff,.fb2{position:absolute;top:0;left:0;right:0;bottom:0;min-height:170px;box-sizing:border-box;border-radius:12px;padding:14px 18px;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;transition:opacity .25s;}.fb2{opacity:0;pointer-events:none;}.fx:checked ~ .fl .ff{opacity:0;pointer-events:none;}.fx:checked ~ .fl .fb2{opacity:1;pointer-events:auto;}.fh{display:flex;justify-content:space-between;align-items:baseline;gap:10px;}.ft{font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}.hn9{font-size:9px;font-style:italic;white-space:nowrap;}.fv1{font-size:38px;font-weight:800;line-height:1;letter-spacing:-.02em;}.fs{font-size:10.5px;line-height:1.3;margin-top:2px;}.fst{display:flex;gap:14px;margin-top:7px;border-top:1px solid;padding-top:6px;}.fi{flex:1;}.fil{font-size:8px;text-transform:uppercase;letter-spacing:.04em;font-weight:600;line-height:1.2;}.fiv{font-size:13px;font-weight:800;line-height:1.2;}.fr{display:flex;align-items:center;gap:7px;margin-bottom:5px;}.fn{width:74px;flex:none;font-size:11px;font-weight:600;}.fbg{flex:1;height:9px;border-radius:4px;overflow:hidden;}.fbr{height:9px;border-radius:4px;}.fv{width:52px;flex:none;text-align:right;font-weight:800;font-size:10.5px;}</style>"
+		lineageTag: 1614f52f-bcc2-46a4-af21-98b1b7d329c9
+
+	measure HTML_PAG2_ExpansionNC =
+			VAR Modo = SELECTEDVALUE ( 'Theme_Switcher'[Mode], "Dark" )
+			VAR EsLight = ( Modo = "Light" )
+			VAR FondoTarjeta = IF ( EsLight, "#FFFFFF", "#1E293B" )
+			VAR BordeTarjeta = IF ( EsLight, "#E2E8F0", "#334155" )
+			VAR Acento = IF ( EsLight, "#5C1531", "#C97F9E" )
+			VAR TextoPrincipal = IF ( EsLight, "#0F172A", "#F1F5F9" )
+			VAR TextoSecundario = IF ( EsLight, "#475569", "#CBD5E1" )
+			VAR TextoNota = IF ( EsLight, "#64748B", "#94A3B8" )
+			VAR BarraFondo = IF ( EsLight, "#E2E8F0", "#273449" )
+			VAR ColorBien = IF ( EsLight, "#059669", "#34D399" )
+			VAR ColorDist = "#F59E0B"
+			VAR B_0 = CALCULATE ( [Total Matrículas], Dim_Zona[ZONA] IN { "Norte", "Centro" }, 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2025, 'dim_programa'[NOMBRE_PROGRAMA] = "DERECHO" )
+			VAR BN_0 = DIVIDE ( CALCULATE ( [Total Matrículas], Dim_Zona[ZONA] IN { "Norte", "Centro" }, 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2025, CONTAINSSTRING ( 'dim_programa'[MODALIDAD], "A distancia" ), 'dim_programa'[NOMBRE_PROGRAMA] = "DERECHO" ), CALCULATE ( [Total Matrículas], Dim_Zona[ZONA] IN { "Norte", "Centro" }, 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2025, 'dim_programa'[NOMBRE_PROGRAMA] = "DERECHO" ) )
+			VAR B_1 = CALCULATE ( [Total Matrículas], Dim_Zona[ZONA] IN { "Norte", "Centro" }, 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2025, 'dim_programa'[NOMBRE_PROGRAMA] = "PSICOLOGIA" )
+			VAR BN_1 = DIVIDE ( CALCULATE ( [Total Matrículas], Dim_Zona[ZONA] IN { "Norte", "Centro" }, 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2025, CONTAINSSTRING ( 'dim_programa'[MODALIDAD], "A distancia" ), 'dim_programa'[NOMBRE_PROGRAMA] = "PSICOLOGIA" ), CALCULATE ( [Total Matrículas], Dim_Zona[ZONA] IN { "Norte", "Centro" }, 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2025, 'dim_programa'[NOMBRE_PROGRAMA] = "PSICOLOGIA" ) )
+			VAR B_2 = CALCULATE ( [Total Matrículas], Dim_Zona[ZONA] IN { "Norte", "Centro" }, 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2025, 'dim_programa'[NOMBRE_PROGRAMA] = "INGENIERIA INDUSTRIAL" )
+			VAR BN_2 = DIVIDE ( CALCULATE ( [Total Matrículas], Dim_Zona[ZONA] IN { "Norte", "Centro" }, 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2025, CONTAINSSTRING ( 'dim_programa'[MODALIDAD], "A distancia" ), 'dim_programa'[NOMBRE_PROGRAMA] = "INGENIERIA INDUSTRIAL" ), CALCULATE ( [Total Matrículas], Dim_Zona[ZONA] IN { "Norte", "Centro" }, 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2025, 'dim_programa'[NOMBRE_PROGRAMA] = "INGENIERIA INDUSTRIAL" ) )
+			VAR A_0 = CALCULATE ( [Total Matrículas], Dim_Zona[ZONA] IN { "Norte", "Centro" }, 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2025, 'dim_programa'[NOMBRE_PROGRAMA] = "INGENIERIA CIVIL" )
+			VAR AN_0 = DIVIDE ( CALCULATE ( [Total Matrículas], Dim_Zona[ZONA] IN { "Norte", "Centro" }, 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2025, CONTAINSSTRING ( 'dim_programa'[MODALIDAD], "A distancia" ), 'dim_programa'[NOMBRE_PROGRAMA] = "INGENIERIA CIVIL" ), CALCULATE ( [Total Matrículas], Dim_Zona[ZONA] IN { "Norte", "Centro" }, 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2025, 'dim_programa'[NOMBRE_PROGRAMA] = "INGENIERIA CIVIL" ) )
+			VAR A_1 = CALCULATE ( [Total Matrículas], Dim_Zona[ZONA] IN { "Norte", "Centro" }, 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2025, 'dim_programa'[NOMBRE_PROGRAMA] = "MEDICINA HUMANA" )
+			VAR AN_1 = DIVIDE ( CALCULATE ( [Total Matrículas], Dim_Zona[ZONA] IN { "Norte", "Centro" }, 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2025, CONTAINSSTRING ( 'dim_programa'[MODALIDAD], "A distancia" ), 'dim_programa'[NOMBRE_PROGRAMA] = "MEDICINA HUMANA" ), CALCULATE ( [Total Matrículas], Dim_Zona[ZONA] IN { "Norte", "Centro" }, 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_periodo'[ANIO] = 2025, 'dim_programa'[NOMBRE_PROGRAMA] = "MEDICINA HUMANA" ) )
+			VAR SumBaja = B_0 + B_1 + B_2
+			RETURN
+			"<div class='ncw'><input type='checkbox' id='nc_flip' class='ncx'><label for='nc_flip' class='ncl'><div class='ncc'>" &
+			"<div class='ncf' style='background:" & FondoTarjeta & ";border:1px solid " & BordeTarjeta & ";border-left:4px solid " & Acento & ";'>" &
+			"<div class='nch'><span class='nct' style='color:" & TextoSecundario & ";'>La segunda ola: Norte + Centro</span><span class='ncn' style='color:" & TextoNota & ";'>2025 · clic</span></div>" &
+			"<div><div class='ncv' style='color:" & Acento & ";'>" & FORMAT ( SumBaja, "#,##0" ) & "</div>" &
+			"<div class='ncs' style='color:" & TextoSecundario & ";'>matrículas en N+C en carreras que <b>ya dictamos</b> y cuyo mercado ya es <b>≥80% virtual</b>. UCSP hoy: 0 fuera de Arequipa.</div></div>" &
+			"<div class='ncst' style='border-color:" & BordeTarjeta & ";'>" &
+			"<div class='nci'><div class='ncil' style='color:" & TextoNota & ";'>Derecho</div><div class='nciv' style='color:" & TextoPrincipal & ";'>" & FORMAT ( B_0, "#,##0" ) & "</div></div>" &
+			"<div class='nci'><div class='ncil' style='color:" & TextoNota & ";'>Psicología</div><div class='nciv' style='color:" & TextoPrincipal & ";'>" & FORMAT ( B_1, "#,##0" ) & "</div></div>" &
+			"<div class='nci'><div class='ncil' style='color:" & TextoNota & ";'>Ing. Industrial</div><div class='nciv' style='color:" & TextoPrincipal & ";'>" & FORMAT ( B_2, "#,##0" ) & "</div></div>" &
+			"</div></div>" &
+			"<div class='ncb' style='background:" & FondoTarjeta & ";border:1px solid " & BordeTarjeta & ";border-left:4px solid " & Acento & ";'>" &
+			"<div class='nch'><span class='nct' style='color:" & Acento & ";'>Fricción alta vs baja</span><span class='ncn' style='color:" & TextoNota & ";'>clic para volver</span></div>" &
+			"<div><div class='ncg' style='color:" & ColorBien & ";'>Baja fricción · no exige campus</div>" &
+			"<div class='ncr'><span class='ncn2' style='color:" & TextoPrincipal & ";'>Derecho</span><div class='ncbg' style='background:" & BarraFondo & ";'><div class='ncbr' style='width:" & FORMAT ( DIVIDE ( B_0, MAX ( MAX ( B_0, B_1 ), MAX ( B_2, A_0 ) ) ) * 100, "0" ) & "%;background:" & ColorBien & ";'></div></div><span class='ncvv' style='color:" & TextoPrincipal & ";'>" & FORMAT ( B_0, "#,##0" ) & "</span><span class='ncnp' style='color:" & ColorBien & ";'>" & FORMAT ( BN_0, "0%" ) & "</span></div>" &
+			"<div class='ncr'><span class='ncn2' style='color:" & TextoPrincipal & ";'>Psicología</span><div class='ncbg' style='background:" & BarraFondo & ";'><div class='ncbr' style='width:" & FORMAT ( DIVIDE ( B_1, MAX ( MAX ( B_0, B_1 ), MAX ( B_2, A_0 ) ) ) * 100, "0" ) & "%;background:" & ColorBien & ";'></div></div><span class='ncvv' style='color:" & TextoPrincipal & ";'>" & FORMAT ( B_1, "#,##0" ) & "</span><span class='ncnp' style='color:" & ColorBien & ";'>" & FORMAT ( BN_1, "0%" ) & "</span></div>" &
+			"<div class='ncr'><span class='ncn2' style='color:" & TextoPrincipal & ";'>Ing. Industrial</span><div class='ncbg' style='background:" & BarraFondo & ";'><div class='ncbr' style='width:" & FORMAT ( DIVIDE ( B_2, MAX ( MAX ( B_0, B_1 ), MAX ( B_2, A_0 ) ) ) * 100, "0" ) & "%;background:" & ColorBien & ";'></div></div><span class='ncvv' style='color:" & TextoPrincipal & ";'>" & FORMAT ( B_2, "#,##0" ) & "</span><span class='ncnp' style='color:" & ColorBien & ";'>" & FORMAT ( BN_2, "0%" ) & "</span></div>" &
+			"<div class='ncg' style='color:" & ColorDist & ";'>Alta fricción · exige presencia física</div>" &
+			"<div class='ncr'><span class='ncn2' style='color:" & TextoPrincipal & ";'>Ing. Civil</span><div class='ncbg' style='background:" & BarraFondo & ";'><div class='ncbr' style='width:" & FORMAT ( DIVIDE ( A_0, MAX ( MAX ( B_0, B_1 ), MAX ( B_2, A_0 ) ) ) * 100, "0" ) & "%;background:" & ColorDist & ";'></div></div><span class='ncvv' style='color:" & TextoPrincipal & ";'>" & FORMAT ( A_0, "#,##0" ) & "</span><span class='ncnp' style='color:" & ColorDist & ";'>" & FORMAT ( AN_0, "0%" ) & "</span></div>" &
+			"<div class='ncr'><span class='ncn2' style='color:" & TextoPrincipal & ";'>Medicina</span><div class='ncbg' style='background:" & BarraFondo & ";'><div class='ncbr' style='width:" & FORMAT ( DIVIDE ( A_1, MAX ( MAX ( B_0, B_1 ), MAX ( B_2, A_0 ) ) ) * 100, "0" ) & "%;background:" & ColorDist & ";'></div></div><span class='ncvv' style='color:" & TextoPrincipal & ";'>" & FORMAT ( A_1, "#,##0" ) & "</span><span class='ncnp' style='color:" & ColorDist & ";'>" & FORMAT ( AN_1, "0%" ) & "</span></div>" &
+			"</div>" &
+			"<div class='ncs' style='color:" & TextoNota & ";font-size:9px;'>Barra = matrículas N+C 2025 · número verde/ámbar = % a distancia del mercado.</div>" &
+			"</div>" &
+			"</div></label></div>" & "<style>.ncw{height:100%;min-height:190px;box-sizing:border-box;font-family:Segoe UI,Roboto,Arial,sans-serif;}.ncx{display:none;}.ncl{display:block;height:100%;min-height:190px;cursor:pointer;}.ncc{position:relative;height:100%;min-height:190px;}.ncf,.ncb{position:absolute;top:0;left:0;right:0;bottom:0;min-height:190px;box-sizing:border-box;border-radius:12px;padding:14px 20px;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;transition:opacity .25s;}.ncb{opacity:0;pointer-events:none;}.ncx:checked ~ .ncl .ncf{opacity:0;pointer-events:none;}.ncx:checked ~ .ncl .ncb{opacity:1;pointer-events:auto;}.nch{display:flex;justify-content:space-between;align-items:baseline;gap:10px;}.nct{font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}.ncn{font-size:9px;font-style:italic;white-space:nowrap;}.ncv{font-size:38px;font-weight:800;line-height:1;letter-spacing:-.02em;}.ncs{font-size:10.5px;line-height:1.3;margin-top:2px;}.ncst{display:flex;gap:18px;margin-top:8px;border-top:1px solid;padding-top:6px;}.nci{flex:1;}.ncil{font-size:8px;text-transform:uppercase;letter-spacing:.04em;font-weight:600;line-height:1.2;}.nciv{font-size:13px;font-weight:800;line-height:1.2;}.ncg{font-size:8px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin:4px 0 3px;}.ncr{display:flex;align-items:center;gap:8px;margin-bottom:4px;}.ncn2{width:92px;flex:none;font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}.ncbg{flex:1;height:9px;border-radius:4px;overflow:hidden;}.ncbr{height:9px;border-radius:4px;}.ncvv{width:56px;flex:none;text-align:right;font-weight:800;font-size:10.5px;}.ncnp{width:34px;flex:none;text-align:right;font-weight:700;font-size:10px;}</style>"
+		lineageTag: 84ed6e96-8d07-4b3e-a01e-806721443f71
+
+	measure HTML_PAG2_Decision =
+			VAR Modo = SELECTEDVALUE ( 'Theme_Switcher'[Mode], "Dark" )
+			VAR EsLight = ( Modo = "Light" )
+			VAR FondoTarjeta = IF ( EsLight, "#FFFFFF", "#1E293B" )
+			VAR BordeTarjeta = IF ( EsLight, "#E2E8F0", "#334155" )
+			VAR Acento = IF ( EsLight, "#5C1531", "#C97F9E" )
+			VAR TextoPrincipal = IF ( EsLight, "#0F172A", "#F1F5F9" )
+			VAR TextoSecundario = IF ( EsLight, "#475569", "#CBD5E1" )
+			VAR TextoNota = IF ( EsLight, "#64748B", "#94A3B8" )
+			VAR ColorBien = IF ( EsLight, "#059669", "#34D399" )
+			VAR ColorDist = "#F59E0B"
+			VAR EnfTot = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_programa'[NOMBRE_PROGRAMA] = "ENFERMERIA", 'dim_periodo'[ANIO] = 2025 )
+			VAR EnfNp = DIVIDE ( CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_programa'[NOMBRE_PROGRAMA] = "ENFERMERIA", 'dim_programa'[ES_VIRTUAL] = TRUE, 'dim_periodo'[ANIO] = 2025 ), EnfTot )
+			VAR PreTot = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_universidad'[CODIGO_INEI] = "260000062", 'dim_periodo'[ANIO] = 2025 )
+			VAR PreDist = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL", 'dim_universidad'[CODIGO_INEI] = "260000062", CONTAINSSTRING ( 'dim_programa'[MODALIDAD], "A distancia" ), 'dim_periodo'[ANIO] = 2025 )
+			VAR PosTot = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] <> "CARRERA PROFESIONAL", 'dim_universidad'[CODIGO_INEI] = "260000062", 'dim_periodo'[ANIO] = 2025 )
+			VAR PosDist = CALCULATE ( [Total Matrículas], 'dim_ubicacion'[DEPARTAMENTO] = "AREQUIPA", 'dim_programa'[NIVEL_ACADEMICO] <> "CARRERA PROFESIONAL", 'dim_universidad'[CODIGO_INEI] = "260000062", CONTAINSSTRING ( 'dim_programa'[MODALIDAD], "A distancia" ), 'dim_periodo'[ANIO] = 2025 )
+			VAR Fuera25 = DIVIDE ( CALCULATE ( SUM ( origen_ucsp[MATRICULAS] ), origen_ucsp[ANIO] = 2025, origen_ucsp[DEPARTAMENTO_NACIMIENTO] <> "AREQUIPA" ),
+			                       CALCULATE ( SUM ( origen_ucsp[MATRICULAS] ), origen_ucsp[ANIO] = 2025 ) )
+			VAR SumBaja = CALCULATE ( [Total Matrículas], Dim_Zona[ZONA] IN { "Norte", "Centro" }, 'dim_programa'[NIVEL_ACADEMICO] = "CARRERA PROFESIONAL",
+			        'dim_programa'[NOMBRE_PROGRAMA] IN { "DERECHO", "PSICOLOGIA", "INGENIERIA INDUSTRIAL" }, 'dim_periodo'[ANIO] = 2025 )
+			RETURN
+			"<div class='dw'><div class='dc' style='background:" & FondoTarjeta & ";border:1px solid " & BordeTarjeta & ";border-left:4px solid " & Acento & ";'>" &
+			"<div class='dh'><span class='dt' style='color:" & Acento & ";'>La decisión</span><span class='dn' style='color:" & TextoNota & ";'>tres movimientos, en orden</span></div>" &
+			"<div class='dcols'>" &
+			"<div class='dcol' style='border-color:" & ColorDist & ";'><div class='dk' style='color:" & TextoNota & ";'>01 · Ahora</div>" &
+			"<div class='dv' style='color:" & ColorDist & ";'>" & FORMAT ( EnfTot, "#,##0" ) & "</div>" &
+			"<div class='dl' style='color:" & TextoSecundario & ";'>Abrir <b>Enfermería</b> en modalidad a distancia. El <b>" & FORMAT ( EnfNp, "0%" ) & "</b> de ese mercado ya no es presencial y UCSP no participa.</div></div>" &
+			"<div class='dcol' style='border-color:" & ColorBien & ";'><div class='dk' style='color:" & TextoNota & ";'>02 · Este año</div>" &
+			"<div class='dv' style='color:" & ColorBien & ";'>" & FORMAT ( COALESCE ( DIVIDE ( PreDist, PreTot ), 0 ), "0%" ) & " → " & FORMAT ( COALESCE ( DIVIDE ( PosDist, PosTot ), 0 ), "0%" ) & "</div>" &
+			"<div class='dl' style='color:" & TextoSecundario & ";'>Llevar el <b>pregrado</b> a la modalidad que ya operamos en posgrado. La capacidad está instalada: no exige campus.</div></div>" &
+			"<div class='dcol' style='border-color:" & Acento & ";'><div class='dk' style='color:" & TextoNota & ";'>03 · Sostener</div>" &
+			"<div class='dv' style='color:" & Acento & ";'>" & FORMAT ( Fuera25, "0.0%" ) & "</div>" &
+			"<div class='dl' style='color:" & TextoSecundario & ";'>Defender la <b>franquicia regional</b>: uno de cada tres alumnos ya nace fuera de Arequipa.</div></div>" &
+			"</div>" &
+			"<div class='df' style='border-color:" & BordeTarjeta & ";color:" & TextoPrincipal & ";'>Norte + Centro solo con baja fricción: <span style='color:" & ColorBien & ";'>" & FORMAT ( SumBaja, "#,##0" ) & " matrículas</span> donde ya dictamos la carrera y el mercado es ≥80% virtual.</div>" &
+			"</div></div>" & "<style>.dw{height:100%;min-height:220px;box-sizing:border-box;font-family:Segoe UI,Roboto,Arial,sans-serif;}.dc{width:100%;height:100%;min-height:220px;box-sizing:border-box;border-radius:12px;padding:16px 22px;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;}.dh{display:flex;justify-content:space-between;align-items:baseline;gap:10px;}.dt{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;}.dn{font-size:9.5px;font-style:italic;}.dcols{display:flex;gap:26px;margin:10px 0 8px;}.dcol{flex:1;border-left:2px solid;padding-left:12px;}.dk{font-size:8px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;}.dv{font-size:30px;font-weight:800;line-height:1.05;letter-spacing:-.02em;margin-top:2px;}.dl{font-size:10.5px;line-height:1.35;margin-top:3px;}.df{font-size:10px;font-weight:700;line-height:1.35;border-top:1px solid;padding-top:7px;}</style>"
+		lineageTag: 6d2d5c95-a63d-4720-a59f-bc85f2964c68
+
+	column _Medidas
+		dataType: string
+		isHidden
+		lineageTag: e7d2c52c-776c-4ee8-b3b6-a4897eb8c319
+		summarizeBy: none
+		sourceColumn: _Medidas
+
+		annotation SummarizationSetBy = Automatic
+
+	partition Medidas = m
+		mode: import
+		source =
+				let
+				    Source = #table(type table [_Medidas = text], {{"Medidas"}})
+				in
+				    Source
+
+	annotation PBI_ResultType = Table
