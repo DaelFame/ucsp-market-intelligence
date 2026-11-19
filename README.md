@@ -153,3 +153,5 @@ A separate technical assessment (SUNEDU) validated data extraction and HTML/DAX 
 3. Open `dashboard/demanda_UCSP.pbip`.
 
 The report opens in **Light** mode by default. Data is not bundled in the repository: the semantic model points to parquet files produced by the notebooks from public SUNEDU/TUNI sources.
+
+> Written case: [daelfame.github.io/work/ucsp-market-intelligence/](https://daelfame.github.io/work/ucsp-market-intelligence/)
